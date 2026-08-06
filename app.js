@@ -1,13 +1,13 @@
 /* Coach Steve Drill Finder */
 const $ = (s) => document.querySelector(s);
+let DRILLS = [];
 const byId = {};
-DRILLS.forEach((d) => (byId[d.id] = d));
 
 const FOCUS = ['Timing & Rhythm', 'Direction & Bat Path', 'Contact Quality', 'Separation & Power', 'Balance & Posture', 'Vision & Approach', 'Fielding & Throwing'];
 const AGES = ['Beginner', 'Intermediate', 'Advanced', 'Pro Level'];
 const HANDS = ['Any', 'Righty', 'Lefty', 'Switch'];
 const CATS = ['Hitting', 'Bunting', 'Infield', 'Outfield', 'Pitching'];
-const TYPES = [...new Set(DRILLS.map((d) => d.drillType).filter(Boolean))].sort();
+let TYPES = [];
 const DIFFS = ['Easy', 'Medium', 'Hard'];
 
 const state = { q: '', focus: new Set(), ages: new Set(), hand: 'Any', cats: new Set(), types: new Set(), diffs: new Set() };
@@ -38,12 +38,23 @@ function countBy(fn) {
   return c;
 }
 
-makeChips($('#focusChips'), FOCUS, state.focus, countBy((d) => d.focus));
-makeChips($('#ageChips'), AGES, state.ages, countBy((d) => d.ages));
-makeChips($('#handChips'), HANDS, null, null, true);
-makeChips($('#catChips'), CATS, state.cats, countBy((d) => [d.category]));
-makeChips($('#typeChips'), TYPES, state.types, null);
-makeChips($('#diffChips'), DIFFS, state.diffs, null);
+function initApp(drills) {
+  DRILLS = drills;
+  DRILLS.forEach((d) => (byId[d.id] = d));
+  TYPES = [...new Set(DRILLS.map((d) => d.drillType).filter(Boolean))].sort();
+  makeChips($('#focusChips'), FOCUS, state.focus, countBy((d) => d.focus));
+  makeChips($('#ageChips'), AGES, state.ages, countBy((d) => d.ages));
+  makeChips($('#handChips'), HANDS, null, null, true);
+  makeChips($('#catChips'), CATS, state.cats, countBy((d) => [d.category]));
+  makeChips($('#typeChips'), TYPES, state.types, null);
+  makeChips($('#diffChips'), DIFFS, state.diffs, null);
+  $('#totalBadge').textContent = `${DRILLS.length} drills`;
+  const fc = $('#footerCount');
+  if (fc) fc.textContent = DRILLS.length;
+  $('#gate').hidden = true;
+  $('#appShell').hidden = false;
+  render();
+}
 
 /* ---------- filtering ---------- */
 function drillHand(d) {
@@ -249,5 +260,50 @@ $('#themeToggle').onclick = () => {
   document.documentElement.dataset.theme = theme;
 };
 
-$('#totalBadge').textContent = `${DRILLS.length} drills`;
-render();
+/* ---------- access gate (AES-GCM encrypted dataset) ---------- */
+const enc = new TextEncoder();
+const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+async function tryUnlock(code) {
+  const norm = code.trim().toUpperCase();
+  if (!norm) return false;
+  try {
+    const baseKey = await crypto.subtle.importKey('raw', enc.encode(norm), 'PBKDF2', false, ['deriveKey']);
+    const key = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: b64(ENC_DRILLS.salt), iterations: ENC_DRILLS.iter, hash: 'SHA-256' },
+      baseKey, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+    );
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(ENC_DRILLS.iv) }, key, b64(ENC_DRILLS.data));
+    const drills = JSON.parse(new TextDecoder().decode(pt));
+    try { localStorage.setItem('csdf_code', norm); } catch (e) {}
+    initApp(drills);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+const gateForm = $('#gateForm');
+gateForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#gateBtn');
+  btn.disabled = true; btn.textContent = 'Checking\u2026';
+  const ok = await tryUnlock($('#gateInput').value);
+  btn.disabled = false; btn.textContent = 'Unlock';
+  $('#gateError').hidden = ok;
+  if (!ok) { $('#gateInput').select(); }
+});
+
+const lockBtn = $('#lockBtn');
+if (lockBtn) lockBtn.onclick = () => {
+  try { localStorage.removeItem('csdf_code'); } catch (e) {}
+  location.reload();
+};
+
+(async () => {
+  let saved = null;
+  try { saved = localStorage.getItem('csdf_code'); } catch (e) {}
+  if (saved && (await tryUnlock(saved))) return;
+  $('#gate').hidden = false;
+  $('#gateInput').focus();
+})();

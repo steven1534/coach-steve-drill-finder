@@ -55,6 +55,41 @@ body {
 button { font: inherit; cursor: pointer; }
 input { font: inherit; }
 
+/* ---------- Access gate ---------- */
+.gate[hidden] { display: none; }
+.gate { min-height: 100dvh; display: grid; place-items: center; padding: var(--space-5); }
+.gate-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: var(--space-10) var(--space-8);
+  max-width: 420px; width: 100%; text-align: center;
+  display: flex; flex-direction: column; gap: var(--space-4); align-items: center;
+}
+.gate-logo { width: 56px; height: 56px; }
+.gate-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; line-height: 1.1; }
+.gate-sub { font-size: var(--text-sm); color: var(--text-2); }
+.gate-form { display: flex; gap: var(--space-2); width: 100%; }
+.gate-form input {
+  flex: 1; min-width: 0; background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: var(--space-3); color: var(--text);
+  font-size: var(--text-base); text-align: center; letter-spacing: 0.12em; outline: none;
+}
+.gate-form input:focus { border-color: var(--accent); }
+.gate-btn {
+  background: var(--accent); color: var(--accent-ink); border: none;
+  border-radius: var(--radius-sm); padding: var(--space-3) var(--space-5);
+  font-weight: 700; font-size: var(--text-sm); transition: background 0.15s;
+}
+.gate-btn:hover { background: var(--accent-strong); }
+.gate-btn:disabled { opacity: 0.6; cursor: wait; }
+.gate-error { font-size: var(--text-xs); color: var(--accent); font-weight: 500; }
+.gate-error[hidden] { display: none; }
+#appShell[hidden] { display: none; }
+.lock-btn {
+  background: none; border: none; color: var(--text-2); font-size: var(--text-xs);
+  text-decoration: underline; padding: 0; cursor: pointer;
+}
+.lock-btn:hover { color: var(--accent); }
+
 /* ---------- Header ---------- */
 .site-header {
   position: sticky; top: 0; z-index: 40;
