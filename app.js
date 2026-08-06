@@ -280,20 +280,23 @@ function clearCode() {
 async function tryUnlock(code) {
   const norm = code.trim().toUpperCase();
   if (!norm) return false;
-  try {
-    const baseKey = await crypto.subtle.importKey('raw', enc.encode(norm), 'PBKDF2', false, ['deriveKey']);
-    const key = await crypto.subtle.deriveKey(
-      { name: 'PBKDF2', salt: b64(ENC_DRILLS.salt), iterations: ENC_DRILLS.iter, hash: 'SHA-256' },
-      baseKey, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
-    );
-    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(ENC_DRILLS.iv) }, key, b64(ENC_DRILLS.data));
-    const drills = JSON.parse(new TextDecoder().decode(pt));
-    saveCode(norm);
-    initApp(drills);
-    return true;
-  } catch (e) {
-    return false;
+  const baseKey = await crypto.subtle.importKey('raw', enc.encode(norm), 'PBKDF2', false, ['deriveKey']);
+  for (const w of ENC_DRILLS.wraps) {
+    try {
+      const kek = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: b64(w.salt), iterations: ENC_DRILLS.iter, hash: 'SHA-256' },
+        baseKey, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+      );
+      const masterRaw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(w.iv) }, kek, b64(w.wk));
+      const master = await crypto.subtle.importKey('raw', masterRaw, 'AES-GCM', false, ['decrypt']);
+      const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(ENC_DRILLS.iv) }, master, b64(ENC_DRILLS.data));
+      const drills = JSON.parse(new TextDecoder().decode(pt));
+      saveCode(norm);
+      initApp(drills);
+      return true;
+    } catch (e) { /* try next wrap */ }
   }
+  return false;
 }
 
 const gateForm = $('#gateForm');
