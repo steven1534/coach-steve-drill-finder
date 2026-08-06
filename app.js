@@ -263,6 +263,19 @@ $('#themeToggle').onclick = () => {
 /* ---------- access gate (AES-GCM encrypted dataset) ---------- */
 const enc = new TextEncoder();
 const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const COOKIE = '__Host-csdf';
+function saveCode(v) {
+  try { document.cookie = `${COOKIE}=${encodeURIComponent(v)}; Secure; Path=/; SameSite=Lax; Max-Age=31536000`; } catch (e) {}
+}
+function readCode() {
+  try {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE.replace(/[-]/g, '\\$&') + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch (e) { return null; }
+}
+function clearCode() {
+  try { document.cookie = `${COOKIE}=; Secure; Path=/; SameSite=Lax; Max-Age=0`; } catch (e) {}
+}
 
 async function tryUnlock(code) {
   const norm = code.trim().toUpperCase();
@@ -275,7 +288,7 @@ async function tryUnlock(code) {
     );
     const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(ENC_DRILLS.iv) }, key, b64(ENC_DRILLS.data));
     const drills = JSON.parse(new TextDecoder().decode(pt));
-    try { localStorage.setItem('csdf_code', norm); } catch (e) {}
+    saveCode(norm);
     initApp(drills);
     return true;
   } catch (e) {
@@ -296,13 +309,12 @@ gateForm.addEventListener('submit', async (e) => {
 
 const lockBtn = $('#lockBtn');
 if (lockBtn) lockBtn.onclick = () => {
-  try { localStorage.removeItem('csdf_code'); } catch (e) {}
+  clearCode();
   location.reload();
 };
 
 (async () => {
-  let saved = null;
-  try { saved = localStorage.getItem('csdf_code'); } catch (e) {}
+  const saved = readCode();
   if (saved && (await tryUnlock(saved))) return;
   $('#gate').hidden = false;
   $('#gateInput').focus();
