@@ -137,9 +137,17 @@ function render(keepShown) {
 }
 
 /* ---------- modal ---------- */
-function ytEmbed(url) {
+function ytId(url) {
   const m = (url || '').match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{6,})/);
-  return m ? `https://www.youtube.com/embed/${m[1]}` : null;
+  return m ? m[1] : null;
+}
+function ytEmbed(url) {
+  const id = ytId(url);
+  return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1` : null;
+}
+function ytWatch(url) {
+  const id = ytId(url);
+  return id ? `https://www.youtube.com/watch?v=${id}` : url;
 }
 
 function steps(text) {
@@ -159,7 +167,8 @@ function openDrill(id) {
   if (!d) return;
   const embed = ytEmbed(d.video);
   const head = embed
-    ? `<div class="modal-video"><iframe src="${embed}" title="${esc(d.name)}" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`
+    ? `<div class="modal-video"><iframe src="${embed}" title="${esc(d.name)}" allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" loading="lazy"></iframe></div>` +
+      `<a class="yt-fallback" href="${esc(ytWatch(d.video))}" target="_blank" rel="noopener">Video not playing? <strong>Watch on YouTube &nearr;</strong></a>`
     : d.thumb
     ? `<div class="modal-video"><img src="${esc(d.thumb)}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`
     : '';
