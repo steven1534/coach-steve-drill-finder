@@ -11,6 +11,9 @@ let TYPES = [];
 const DIFFS = ['Easy', 'Medium', 'Hard'];
 
 const state = { q: '', focus: new Set(), ages: new Set(), hand: 'Any', cats: new Set(), types: new Set(), diffs: new Set() };
+let buildMode = false;
+let planSel = [];
+let sessionView = null; // {ids, name, note}
 
 /* ---------- chip rendering ---------- */
 function makeChips(el, values, set, counts, single) {
@@ -53,6 +56,7 @@ function initApp(drills) {
   if (fc) fc.textContent = DRILLS.length;
   $('#gate').hidden = true;
   $('#appShell').hidden = false;
+  applyHash();
   render();
 }
 
@@ -105,8 +109,11 @@ function card(d) {
   const blurb = d.fixes || fallback || d.purpose || d.description;
   const fixes = (d.fixes || fallback) ? `<strong>Fixes:</strong> ${esc(blurb)}` : esc(blurb);
   const meta = [d.drillType, d.duration, d.difficulty].filter(Boolean).map(esc).join(' &middot; ');
-  return `<button class="card" onclick="openDrill('${d.id}')">
-    <div class="card-thumb">${thumb}</div>
+  const selected = buildMode && planSel.includes(d.id);
+  const num = sessionView ? `<span class="seq-badge">${sessionView.ids.indexOf(d.id) + 1}</span>` : '';
+  const selMark = selected ? '<span class="sel-mark">&#10003; Added</span>' : '';
+  return `<button class="card${selected ? ' sel' : ''}" onclick="cardClick('${d.id}')">
+    <div class="card-thumb">${num}${selMark}${thumb}</div>
     <div class="card-body">
       <div class="card-badges">${badges}</div>
       <div class="card-title">${esc(d.name)}</div>
@@ -116,9 +123,23 @@ function card(d) {
   </button>`;
 }
 
+function cardClick(id) {
+  if (buildMode) {
+    const i = planSel.indexOf(id);
+    if (i >= 0) planSel.splice(i, 1);
+    else planSel.push(id);
+    $('#buildOutput').hidden = true;
+    render(true);
+    renderBuildBar();
+  } else {
+    openDrill(id);
+  }
+}
+
 let shown = 60;
 function render(keepShown) {
   if (!keepShown) shown = 60;
+  if (sessionView) { renderSession(); return; }
   const res = DRILLS.filter(matches);
   const grid = $('#resultsGrid');
   grid.innerHTML = res.slice(0, shown).map(card).join('');
@@ -259,6 +280,162 @@ $('#themeToggle').onclick = () => {
   theme = theme === 'dark' ? 'light' : 'dark';
   document.documentElement.dataset.theme = theme;
 };
+
+/* ---------- session view (shared plan links) ---------- */
+function renderSession() {
+  const drills = sessionView.ids.map((i) => byId[i]).filter(Boolean);
+  $('#finderControls').hidden = true;
+  const mins = drills.reduce((s, d) => s + (parseInt(d.duration) || 0), 0);
+  $('#sessionBanner').hidden = false;
+  $('#sessionBanner').innerHTML = `
+    <div class="sb-inner">
+      <span class="sb-label">Training session${sessionView.name ? ' for ' + esc(sessionView.name) : ''}</span>
+      <h2 class="sb-title">${drills.length} drills from Coach Steve${mins ? ' &middot; ~' + mins + ' min' : ''}</h2>
+      ${sessionView.note ? `<p class="sb-note">&ldquo;${esc(sessionView.note)}&rdquo;</p>` : ''}
+      <p class="sb-hint">Work top to bottom. Tap a drill for video, setup, and cues.</p>
+      <button class="clear-btn" onclick="exitSession()">Browse the full library &rarr;</button>
+    </div>`;
+  $('#resultsGrid').innerHTML = drills.map(card).join('');
+  $('#emptyState').hidden = true;
+  $('#resultCount').innerHTML = `<strong>${drills.length}</strong> assigned drills`;
+  $('#handNote').hidden = true;
+}
+
+function exitSession() {
+  sessionView = null;
+  history.replaceState(null, '', location.pathname + location.search);
+  $('#sessionBanner').hidden = true;
+  $('#finderControls').hidden = false;
+  render();
+}
+
+function applyHash() {
+  const h = location.hash.slice(1);
+  if (!h.startsWith('plan=')) return false;
+  const p = new URLSearchParams(h);
+  const ids = (p.get('plan') || '').split(',').filter((i) => byId[i]);
+  if (!ids.length) return false;
+  if (buildMode) {
+    buildMode = false;
+    $('#buildBar').hidden = true;
+    $('#buildBtn').classList.remove('on');
+    $('#buildBtn').textContent = '+ Build session';
+  }
+  sessionView = { ids, name: p.get('for') || '', note: p.get('note') || '' };
+  return true;
+}
+
+/* ---------- session builder ---------- */
+function makePacks() {
+  const pick = (fn) => DRILLS.filter((d) => d.category === 'Hitting' && d.video && fn(d)).slice(0, 4).map((d) => d.id);
+  return [
+    { name: 'Timing Tune-Up', ids: pick((d) => d.problems.some((p) => ['timing', 'rhythm'].includes(p))) },
+    { name: 'Casting Fix Pack', ids: pick((d) => d.problems.includes('Casting')) },
+    { name: 'Balance Builder', ids: pick((d) => d.problems.some((p) => ['Lunging', 'Drifting Forward'].includes(p))) },
+  ].filter((p) => p.ids.length >= 3);
+}
+
+function setBuildMode(on) {
+  buildMode = on;
+  if (on && sessionView) exitSession();
+  $('#buildBar').hidden = !on;
+  $('#buildBtn').classList.toggle('on', on);
+  $('#buildBtn').textContent = on ? 'Building\u2026' : '+ Build session';
+  if (on) renderBuildBar();
+  render(true);
+}
+
+function renderBuildBar() {
+  $('#buildCount').textContent = `${planSel.length} drill${planSel.length === 1 ? '' : 's'}`;
+  $('#getLinkBtn').disabled = planSel.length === 0;
+  const list = $('#buildList');
+  list.innerHTML = planSel.map((id, i) => {
+    const d = byId[id];
+    return `<li><span>${esc(d.name)}</span>
+      <span class="bl-actions">
+        ${i > 0 ? `<button onclick="movePlan(${i},-1)" aria-label="Move up">&uarr;</button>` : ''}
+        ${i < planSel.length - 1 ? `<button onclick="movePlan(${i},1)" aria-label="Move down">&darr;</button>` : ''}
+        <button onclick="removePlan(${i})" aria-label="Remove">&times;</button>
+      </span></li>`;
+  }).join('') || '<li class="bl-empty">Tap drills in the library to add them.</li>';
+  const packs = $('#packChips');
+  if (!packs.dataset.done) {
+    makePacks().forEach((p) => {
+      const b = document.createElement('button');
+      b.className = 'chip';
+      b.textContent = p.name;
+      b.onclick = () => { planSel = [...p.ids]; $('#buildOutput').hidden = true; render(true); renderBuildBar(); $('#buildPanel').hidden = false; };
+      packs.appendChild(b);
+    });
+    packs.dataset.done = '1';
+  }
+}
+
+function movePlan(i, dir) {
+  const j = i + dir;
+  [planSel[i], planSel[j]] = [planSel[j], planSel[i]];
+  render(true); renderBuildBar();
+}
+function removePlan(i) {
+  planSel.splice(i, 1);
+  $('#buildOutput').hidden = true;
+  render(true); renderBuildBar();
+}
+
+function planUrl() {
+  const p = new URLSearchParams();
+  p.set('plan', planSel.join(','));
+  const name = $('#planFor').value.trim();
+  const note = $('#planNote').value.trim();
+  if (name) p.set('for', name);
+  if (note) p.set('note', note);
+  return location.origin + location.pathname + '#' + p.toString();
+}
+
+function planText() {
+  const name = $('#planFor').value.trim();
+  const note = $('#planNote').value.trim();
+  let t = `Coach Steve \u2014 training session${name ? ' for ' + name : ''}\n`;
+  if (note) t += note + '\n';
+  t += '\n';
+  planSel.forEach((id, i) => {
+    const d = byId[id];
+    t += `${i + 1}. ${d.name}${d.duration ? ' (' + d.duration + ')' : ''}${d.cue ? ' \u2014 \u201C' + d.cue.replace(/^[\u201C"]+|[\u201D"]+$/g, '') + '\u201D' : ''}\n`;
+  });
+  t += `\nOpen your session: ${planUrl()}`;
+  return t;
+}
+
+async function copyToClipboard(text, btn, okLabel) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      ok = document.execCommand('copy'); ta.remove();
+    } catch (e2) { ok = false; }
+  }
+  const orig = btn.textContent;
+  btn.textContent = ok ? okLabel : 'Select & copy manually';
+  setTimeout(() => { btn.textContent = orig; }, 2000);
+}
+
+$('#buildBtn').onclick = () => setBuildMode(!buildMode);
+$('#buildDone').onclick = () => setBuildMode(false);
+$('#buildClear').onclick = () => { planSel = []; $('#buildOutput').hidden = true; render(true); renderBuildBar(); };
+$('#buildTogglePanel').onclick = () => { $('#buildPanel').hidden = !$('#buildPanel').hidden; };
+$('#getLinkBtn').onclick = () => {
+  $('#buildPanel').hidden = false;
+  $('#buildOutput').hidden = false;
+  $('#planLink').value = planUrl();
+};
+$('#copyLinkBtn').onclick = (e) => copyToClipboard(planUrl(), e.target, 'Copied!');
+$('#copyTextBtn').onclick = (e) => copyToClipboard(planText(), e.target, 'Copied!');
+$('#planLink').addEventListener('focus', (e) => e.target.select());
+['planFor', 'planNote'].forEach((id) => $('#' + id).addEventListener('input', () => {
+  if (!$('#buildOutput').hidden) $('#planLink').value = planUrl();
+}));
+window.addEventListener('hashchange', () => { if (applyHash()) render(); });
 
 /* ---------- access gate (AES-GCM encrypted dataset) ---------- */
 const enc = new TextEncoder();
