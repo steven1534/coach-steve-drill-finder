@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node scripts/test-sync.mjs",
-    "build": "node scripts/sync-build.mjs"
+    "build": "node scripts/sync-build.mjs",
+    "rotate-temp": "node scripts/rotate-temp.mjs"
   },
   "engines": {
     "node": "24.x"
