@@ -135,7 +135,7 @@ function deriveFocus(row) {
   return [...focus];
 }
 
-export function mergeNotionRows(oldDrills, rows) {
+export function mergeNotionRows(oldDrills, rows, expected) {
   const oldByName = new Map();
   for (const drill of oldDrills) {
     const key = normalizedName(drill.name);
@@ -191,12 +191,13 @@ export function mergeNotionRows(oldDrills, rows) {
   });
 
   const removed = oldDrills.length - matched;
+  if (!expected) throw new Error("Per-run sync expectations are missing.");
   if (
-    oldDrills.length !== 217 ||
-    rows.length !== 218 ||
-    matched !== 217 ||
-    added !== 1 ||
-    removed !== 0
+    oldDrills.length !== expected.oldCount ||
+    rows.length !== expected.newCount ||
+    matched !== expected.matched ||
+    added !== expected.added ||
+    removed !== expected.removed
   ) {
     throw new Error(
       `Guard failed: old=${oldDrills.length}, notion=${rows.length}, ` +
@@ -255,11 +256,18 @@ async function main() {
   const transport = JSON.parse(
     await readFile(path.join(ROOT, "private", "notion-export.enc.json"), "utf8"),
   );
+  const expected = JSON.parse(
+    await readFile(path.join(ROOT, "private", "sync-expectations.json"), "utf8"),
+  );
   const exportPayload = JSON.parse(decryptTransport(transport, exportKey).toString("utf8"));
   const rows = exportPayload.results;
   if (!Array.isArray(rows)) throw new Error("Notion export has no results array.");
 
-  const { drills, matched, added, removed } = mergeNotionRows(oldDrills, rows);
+  const { drills, matched, added, removed } = mergeNotionRows(
+    oldDrills,
+    rows,
+    expected,
+  );
   const iv = randomBytes(12);
   const sealed = encryptAesGcm(master, iv, Buffer.from(JSON.stringify(drills)));
   const wraps = [...envelope.wraps];

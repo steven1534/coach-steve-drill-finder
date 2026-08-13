@@ -63,7 +63,13 @@ const rows = [
     tags: "[\"Bat path\"]",
   },
 ];
-const merged = mergeNotionRows(old, rows);
+const merged = mergeNotionRows(old, rows, {
+  oldCount: 217,
+  newCount: 218,
+  matched: 217,
+  added: 1,
+  removed: 0,
+});
 assert.equal(merged.drills.length, 218);
 assert.equal(merged.matched, 217);
 assert.equal(merged.added, 1);

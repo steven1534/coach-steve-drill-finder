@@ -29,14 +29,16 @@ dataset, or export key in source control, command output, reports, or chat.
 4. Store that key temporarily as the Vercel Sensitive Production variable
    `DRILL_SYNC_EXPORT_KEY`.
 5. Put only the encrypted export at `private/notion-export.enc.json`.
-6. Run `npm test`.
-7. Create a guarded Vercel production build with `npm run build`.
-8. The build must decrypt the current dataset with the maintenance code,
+6. Write the reviewed expected old/new/matched/added/removed counts to
+   `private/sync-expectations.json`.
+7. Run `npm test`.
+8. Create a guarded Vercel production build with `npm run build`.
+9. The build must decrypt the current dataset with the maintenance code,
    preserve existing IDs and wrappers, merge by normalized drill name, reject
    duplicate names/IDs, and refuse unexpected additions or removals.
-9. Verify the live count, filters, free-text search, drill detail, video
+10. Verify the live count, filters, free-text search, drill detail, video
    fallback, and Session Builder.
-10. Delete `DRILL_SYNC_EXPORT_KEY` and all local plaintext exports immediately.
+11. Delete `DRILL_SYNC_EXPORT_KEY` and all local plaintext exports immediately.
 
 The build intentionally fails before deployment if its count and merge guards
 do not match the expected source transition. Adjust count guards only after a
