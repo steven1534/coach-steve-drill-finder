@@ -1,1 +1,5 @@
 .vercel
+dist/
+private/
+.env
+.env.*
