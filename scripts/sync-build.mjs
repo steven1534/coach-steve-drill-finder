@@ -135,6 +135,84 @@ function deriveFocus(row) {
   return [...focus];
 }
 
+function richText(value) {
+  return Array.isArray(value)
+    ? value.map((item) => item?.plain_text || "").join("")
+    : "";
+}
+
+function notionPropertyValue(property) {
+  if (!property) return "";
+  switch (property.type) {
+    case "title":
+      return richText(property.title);
+    case "rich_text":
+      return richText(property.rich_text);
+    case "select":
+      return property.select?.name || "";
+    case "multi_select":
+      return (property.multi_select || []).map((item) => item.name);
+    case "url":
+      return property.url || "";
+    case "checkbox":
+      return property.checkbox ? "__YES__" : "__NO__";
+    case "number":
+      return property.number ?? "";
+    case "relation":
+      return (property.relation || []).map((item) => item.id);
+    default:
+      return "";
+  }
+}
+
+export function notionPageToRow(page) {
+  const row = {
+    url: page.url,
+    createdTime: page.created_time,
+    notionId: page.id,
+  };
+  for (const [name, property] of Object.entries(page.properties || {})) {
+    row[name] = notionPropertyValue(property);
+  }
+  return row;
+}
+
+export async function fetchNotionRows(
+  token,
+  dataSourceId = "5c35b9e8-f83e-4547-99d6-47a88c7c00ce",
+  fetcher = fetch,
+) {
+  const rows = [];
+  let cursor;
+  do {
+    const response = await fetcher(
+      `https://api.notion.com/v1/data_sources/${dataSourceId}/query`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Notion-Version": "2026-03-11",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          page_size: 100,
+          ...(cursor ? { start_cursor: cursor } : {}),
+        }),
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`Notion query failed with HTTP ${response.status}.`);
+    }
+    const page = await response.json();
+    rows.push(...(page.results || []).map(notionPageToRow));
+    cursor = page.has_more ? page.next_cursor : null;
+    if (rows.length > 1000) {
+      throw new Error("Notion safety limit exceeded.");
+    }
+  } while (cursor);
+  return rows;
+}
+
 export function mergeNotionRows(oldDrills, rows, expected) {
   const oldByName = new Map();
   for (const drill of oldDrills) {
@@ -161,6 +239,7 @@ export function mergeNotionRows(oldDrills, rows, expected) {
 
     const mapped = {
       id: old?.id ?? newId(name, row.url),
+      notionId: String(row.notionId || old?.notionId || ""),
       name,
       description: String(row.description ?? ""),
       category: String(row.category || "Hitting"),
@@ -191,18 +270,34 @@ export function mergeNotionRows(oldDrills, rows, expected) {
   });
 
   const removed = oldDrills.length - matched;
-  if (!expected) throw new Error("Per-run sync expectations are missing.");
-  if (
-    oldDrills.length !== expected.oldCount ||
-    rows.length !== expected.newCount ||
-    matched !== expected.matched ||
-    added !== expected.added ||
-    removed !== expected.removed
-  ) {
-    throw new Error(
-      `Guard failed: old=${oldDrills.length}, notion=${rows.length}, ` +
-        `matched=${matched}, added=${added}, removed=${removed}.`,
-    );
+  if (expected) {
+    if (
+      oldDrills.length !== expected.oldCount ||
+      rows.length !== expected.newCount ||
+      matched !== expected.matched ||
+      added !== expected.added ||
+      removed !== expected.removed
+    ) {
+      throw new Error(
+        `Guard failed: old=${oldDrills.length}, notion=${rows.length}, ` +
+          `matched=${matched}, added=${added}, removed=${removed}.`,
+      );
+    }
+  } else {
+    const overlapFloor = Math.floor(Math.min(oldDrills.length, rows.length) * 0.75);
+    if (
+      oldDrills.length < 150 ||
+      rows.length < 150 ||
+      rows.length > 500 ||
+      matched < overlapFloor ||
+      added > 30 ||
+      removed > 30
+    ) {
+      throw new Error(
+        `Automated guard failed: old=${oldDrills.length}, notion=${rows.length}, ` +
+          `matched=${matched}, added=${added}, removed=${removed}.`,
+      );
+    }
   }
 
   const ids = new Set(merged.map((drill) => drill.id));
@@ -225,8 +320,12 @@ async function main() {
   const accessCode = process.env.DRILL_SYNC_ACCESS_CODE;
   const maintenanceCode = process.env.DRILL_SYNC_MAINTENANCE_CODE;
   const exportKey = process.env.DRILL_SYNC_EXPORT_KEY;
-  if ((!accessCode && !maintenanceCode) || !exportKey) {
+  const notionToken = process.env.NOTION_API_KEY;
+  if (!accessCode && !maintenanceCode) {
     throw new Error("Required protected sync build variables are missing.");
+  }
+  if (!notionToken && !exportKey) {
+    throw new Error("Notion or protected export configuration is missing.");
   }
 
   const dataSource = await readFile(path.join(SOURCE, "data.js"), "utf8");
@@ -253,14 +352,22 @@ async function main() {
   );
   const oldDrills = JSON.parse(oldPlaintext.toString("utf8"));
 
-  const transport = JSON.parse(
-    await readFile(path.join(ROOT, "private", "notion-export.enc.json"), "utf8"),
-  );
-  const expected = JSON.parse(
-    await readFile(path.join(ROOT, "private", "sync-expectations.json"), "utf8"),
-  );
-  const exportPayload = JSON.parse(decryptTransport(transport, exportKey).toString("utf8"));
-  const rows = exportPayload.results;
+  let rows;
+  let expected = null;
+  if (notionToken) {
+    rows = await fetchNotionRows(notionToken);
+  } else {
+    const transport = JSON.parse(
+      await readFile(path.join(ROOT, "private", "notion-export.enc.json"), "utf8"),
+    );
+    expected = JSON.parse(
+      await readFile(path.join(ROOT, "private", "sync-expectations.json"), "utf8"),
+    );
+    const exportPayload = JSON.parse(
+      decryptTransport(transport, exportKey).toString("utf8"),
+    );
+    rows = exportPayload.results;
+  }
   if (!Array.isArray(rows)) throw new Error("Notion export has no results array.");
 
   const { drills, matched, added, removed } = mergeNotionRows(
@@ -299,9 +406,61 @@ async function main() {
   const digest = createHash("sha256")
     .update(JSON.stringify(drills))
     .digest("hex");
+  const generatedAt = new Date().toISOString();
+  await writeFile(
+    path.join(ROOT, "dist", "sync-status.json"),
+    JSON.stringify({
+      generatedAt,
+      drillCount: drills.length,
+      matched,
+      added,
+      removed,
+      contentSha256: digest,
+    }),
+  );
+
+  const syncDirectory = path.join(ROOT, "sync");
+  if (existsSync(path.join(syncDirectory, "sync.html"))) {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (
+      !supabaseUrl ||
+      !publishableKey ||
+      publishableKey.startsWith("sb_secret_")
+    ) {
+      throw new Error("Public coach Auth build configuration is missing.");
+    }
+    await cp(
+      path.join(syncDirectory, "sync.html"),
+      path.join(ROOT, "dist", "sync.html"),
+    );
+    await cp(
+      path.join(syncDirectory, "sync.css"),
+      path.join(ROOT, "dist", "sync.css"),
+    );
+    await writeFile(
+      path.join(ROOT, "dist", "sync-config.json"),
+      JSON.stringify({
+        supabaseUrl,
+        supabasePublishableKey: publishableKey,
+      }),
+    );
+    const { build } = await import("esbuild");
+    await build({
+      entryPoints: [path.join(syncDirectory, "sync-client.js")],
+      bundle: true,
+      format: "esm",
+      platform: "browser",
+      minify: true,
+      outfile: path.join(ROOT, "dist", "sync-client.js"),
+      logLevel: "warning",
+    });
+  }
+
   console.log(
     JSON.stringify({
       result: "ok",
+      generatedAt,
       oldCount: oldDrills.length,
       newCount: drills.length,
       matched,

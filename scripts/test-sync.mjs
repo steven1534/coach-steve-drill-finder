@@ -4,6 +4,7 @@ import {
   decryptAesGcm,
   encryptAesGcm,
   mergeNotionRows,
+  notionPageToRow,
   unwrapMaster,
   wrapMaster,
 } from "./sync-build.mjs";
@@ -75,5 +76,33 @@ assert.equal(merged.matched, 217);
 assert.equal(merged.added, 1);
 assert.equal(merged.removed, 0);
 assert.equal(merged.drills.find((d) => d.name === "Generated Drill 12").id, "existing-12");
+
+assert.deepEqual(
+  notionPageToRow({
+    id: "generated-page",
+    url: "https://notion.test/generated-page",
+    created_time: "2026-08-14T00:00:00.000Z",
+    properties: {
+      Dr: { type: "title", title: [{ plain_text: "Generated Drill" }] },
+      difficulty: { type: "select", select: { name: "Medium" } },
+      ageLevel: {
+        type: "multi_select",
+        multi_select: [{ name: "Beginner" }, { name: "Intermediate" }],
+      },
+      Featured: { type: "checkbox", checkbox: true },
+      videoUrl: { type: "url", url: "https://www.youtube.com/watch?v=generated" },
+    },
+  }),
+  {
+    url: "https://notion.test/generated-page",
+    createdTime: "2026-08-14T00:00:00.000Z",
+    notionId: "generated-page",
+    Dr: "Generated Drill",
+    difficulty: "Medium",
+    ageLevel: ["Beginner", "Intermediate"],
+    Featured: "__YES__",
+    videoUrl: "https://www.youtube.com/watch?v=generated",
+  },
+);
 
 console.log("sync_tests=PASS");

@@ -4,9 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/test-sync.mjs",
+    "test": "node scripts/test-sync.mjs && node scripts/test-sync-route.mjs",
     "build": "node scripts/sync-build.mjs",
     "rotate-temp": "node scripts/rotate-temp.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.9"
   },
   "engines": {
     "node": "24.x"
