@@ -9,6 +9,12 @@ import { existsSync } from "node:fs";
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  dedupeDisplayLevels,
+  hasRawLabelSpillover,
+  partitionBySyncFlag,
+  sanitizeNotionRow,
+} from "./sync-field-sanitizer.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = existsSync(path.join(ROOT, "public", "data.js"))
@@ -237,6 +243,10 @@ export function mergeNotionRows(oldDrills, rows, expected) {
     if (old) matched += 1;
     else added += 1;
 
+    const displayLevels = dedupeDisplayLevels(
+      row.foundationOrAdvanced,
+      list(row.ageLevel),
+    );
     const mapped = {
       id: old?.id ?? newId(name, row.url),
       notionId: String(row.notionId || old?.notionId || ""),
@@ -246,8 +256,8 @@ export function mergeNotionRows(oldDrills, rows, expected) {
       drillType: String(row.drillType ?? ""),
       duration: String(row.duration ?? ""),
       difficulty: String(row.difficulty ?? ""),
-      level: String(row.foundationOrAdvanced ?? ""),
-      ages: list(row.ageLevel),
+      level: displayLevels.level,
+      ages: displayLevels.ages,
       focus: old?.focus?.length ? old.focus : deriveFocus(row),
       problems: list(row.problem),
       goals: list(row.goal),
@@ -266,6 +276,22 @@ export function mergeNotionRows(oldDrills, rows, expected) {
       ...(old?.nextDrill ? { nextDrill: old.nextDrill } : {}),
       ...(old?.nextReason ? { nextReason: old.nextReason } : {}),
     };
+    const displayText = {
+      description: mapped.description,
+      purpose: mapped.purpose,
+      cue: mapped.cue,
+      fixes: mapped.fixes,
+      howTo: mapped.howTo,
+      feel: mapped.feel,
+      watchFor: mapped.watchFor,
+      mistakes: mapped.mistakes,
+      nextStepsText: mapped.nextStepsText,
+    };
+    for (const [field, value] of Object.entries(displayText)) {
+      if (hasRawLabelSpillover(value)) {
+        throw new Error(`Raw Notion property label leaked into ${name}.${field}.`);
+      }
+    }
     return old ? { ...old, ...mapped } : mapped;
   });
 
@@ -369,6 +395,11 @@ async function main() {
     rows = exportPayload.results;
   }
   if (!Array.isArray(rows)) throw new Error("Notion export has no results array.");
+  const syncPartition = partitionBySyncFlag(rows);
+  rows = syncPartition.enabled.map(sanitizeNotionRow);
+  if (!rows.length) {
+    throw new Error("No Notion drills are enabled for Sync to Site.");
+  }
 
   const { drills, matched, added, removed } = mergeNotionRows(
     oldDrills,
@@ -415,6 +446,8 @@ async function main() {
       matched,
       added,
       removed,
+      syncEnabledCount: syncPartition.enabled.length,
+      syncDisabledCount: syncPartition.disabled.length,
       contentSha256: digest,
     }),
   );
