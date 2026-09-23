@@ -1,4 +1,4 @@
-import { clearSessionCookie, json, setSessionCookie, unlock } from "./_drillAccess.js";
+import { clearSessionCookie, json, setSessionCookie, unlock } from "../lib/drillAccess.js";
 
 const attempts = new Map();
 const WINDOW_MS = 15 * 60 * 1000;
