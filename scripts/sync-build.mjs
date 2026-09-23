@@ -347,6 +347,17 @@ async function main() {
   const maintenanceCode = process.env.DRILL_SYNC_MAINTENANCE_CODE;
   const exportKey = process.env.DRILL_SYNC_EXPORT_KEY;
   const notionToken = process.env.NOTION_API_KEY;
+  if (
+    process.env.VERCEL_ENV === "preview" &&
+    (!accessCode && !maintenanceCode || !notionToken && !exportKey)
+  ) {
+    await mkdir(path.join(ROOT, "dist"), { recursive: true });
+    for (const file of ["index.html", "app.js", "styles.css", "data.js"]) {
+      await cp(path.join(SOURCE, file), path.join(ROOT, "dist", file));
+    }
+    console.log(JSON.stringify({ result: "preview-static", protectedSyncSkipped: true }));
+    return;
+  }
   if (!accessCode && !maintenanceCode) {
     throw new Error("Required protected sync build variables are missing.");
   }
