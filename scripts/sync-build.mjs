@@ -421,6 +421,25 @@ async function main() {
     }));
     return;
   }
+
+  if (process.env.VERCEL_ENV === "preview") {
+    await mkdir(path.join(ROOT, "dist"), { recursive: true });
+    for (const file of ["index.html", "app.js", "styles.css", "data.js"]) {
+      await cp(path.join(SOURCE, file), path.join(ROOT, "dist", file));
+    }
+    const syncDirectory = path.join(ROOT, "sync");
+    if (existsSync(path.join(syncDirectory, "sync.html"))) {
+      await cp(path.join(syncDirectory, "sync.html"), path.join(ROOT, "dist", "sync.html"));
+      await cp(path.join(syncDirectory, "sync.css"), path.join(ROOT, "dist", "sync.css"));
+      await cp(path.join(syncDirectory, "sync-client.js"), path.join(ROOT, "dist", "sync-client.js"));
+    }
+    console.log(JSON.stringify({
+      result: "preview-static",
+      protectedSyncSkipped: true,
+    }));
+    return;
+  }
+
   if (!accessCode && !maintenanceCode) {
     throw new Error("Required protected sync build variables are missing.");
   }
