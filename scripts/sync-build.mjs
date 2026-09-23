@@ -347,10 +347,14 @@ async function main() {
   const maintenanceCode = process.env.DRILL_SYNC_MAINTENANCE_CODE;
   const exportKey = process.env.DRILL_SYNC_EXPORT_KEY;
   const notionToken = process.env.NOTION_API_KEY;
-  const mappedAccessConfigured = Boolean(
-    process.env.DRILL_ACCESS_CODES ||
-    (process.env.VERCEL_ENV === "preview" && process.env.DRILL_PREVIEW_ACCESS_CODES)
+  const productionAccessConfigured = Boolean(process.env.DRILL_ACCESS_CODES);
+  const previewAccessConfigured = Boolean(
+    process.env.VERCEL_ENV === "preview" &&
+    process.env.DRILL_PREVIEW_ACCESS_CODES &&
+    notionToken
   );
+  const mappedAccessConfigured =
+    productionAccessConfigured || previewAccessConfigured;
 
   if (mappedAccessConfigured) {
     if (!notionToken) {
@@ -406,34 +410,9 @@ async function main() {
 
     const syncDirectory = path.join(ROOT, "sync");
     if (existsSync(path.join(syncDirectory, "sync.html"))) {
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
-      if (
-        !supabaseUrl ||
-        !publishableKey ||
-        publishableKey.startsWith("sb_secret_")
-      ) {
-        throw new Error("Public coach Auth build configuration is missing.");
-      }
       await cp(path.join(syncDirectory, "sync.html"), path.join(ROOT, "dist", "sync.html"));
       await cp(path.join(syncDirectory, "sync.css"), path.join(ROOT, "dist", "sync.css"));
-      await writeFile(
-        path.join(ROOT, "dist", "sync-config.json"),
-        JSON.stringify({
-          supabaseUrl,
-          supabasePublishableKey: publishableKey,
-        }),
-      );
-      const { build } = await import("esbuild");
-      await build({
-        entryPoints: [path.join(syncDirectory, "sync-client.js")],
-        bundle: true,
-        format: "esm",
-        platform: "browser",
-        minify: true,
-        outfile: path.join(ROOT, "dist", "sync-client.js"),
-        logLevel: "warning",
-      });
+      await cp(path.join(syncDirectory, "sync-client.js"), path.join(ROOT, "dist", "sync-client.js"));
     }
 
     console.log(JSON.stringify({
@@ -446,6 +425,25 @@ async function main() {
     }));
     return;
   }
+
+  if (process.env.VERCEL_ENV === "preview") {
+    await mkdir(path.join(ROOT, "dist"), { recursive: true });
+    for (const file of ["index.html", "app.js", "styles.css", "data.js"]) {
+      await cp(path.join(SOURCE, file), path.join(ROOT, "dist", file));
+    }
+    const syncDirectory = path.join(ROOT, "sync");
+    if (existsSync(path.join(syncDirectory, "sync.html"))) {
+      await cp(path.join(syncDirectory, "sync.html"), path.join(ROOT, "dist", "sync.html"));
+      await cp(path.join(syncDirectory, "sync.css"), path.join(ROOT, "dist", "sync.css"));
+      await cp(path.join(syncDirectory, "sync-client.js"), path.join(ROOT, "dist", "sync-client.js"));
+    }
+    console.log(JSON.stringify({
+      result: "preview-static",
+      protectedSyncSkipped: true,
+    }));
+    return;
+  }
+
   if (!accessCode && !maintenanceCode) {
     throw new Error("Required protected sync build variables are missing.");
   }
@@ -553,15 +551,6 @@ async function main() {
 
   const syncDirectory = path.join(ROOT, "sync");
   if (existsSync(path.join(syncDirectory, "sync.html"))) {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
-    if (
-      !supabaseUrl ||
-      !publishableKey ||
-      publishableKey.startsWith("sb_secret_")
-    ) {
-      throw new Error("Public coach Auth build configuration is missing.");
-    }
     await cp(
       path.join(syncDirectory, "sync.html"),
       path.join(ROOT, "dist", "sync.html"),
@@ -570,23 +559,10 @@ async function main() {
       path.join(syncDirectory, "sync.css"),
       path.join(ROOT, "dist", "sync.css"),
     );
-    await writeFile(
-      path.join(ROOT, "dist", "sync-config.json"),
-      JSON.stringify({
-        supabaseUrl,
-        supabasePublishableKey: publishableKey,
-      }),
+    await cp(
+      path.join(syncDirectory, "sync-client.js"),
+      path.join(ROOT, "dist", "sync-client.js"),
     );
-    const { build } = await import("esbuild");
-    await build({
-      entryPoints: [path.join(syncDirectory, "sync-client.js")],
-      bundle: true,
-      format: "esm",
-      platform: "browser",
-      minify: true,
-      outfile: path.join(ROOT, "dist", "sync-client.js"),
-      logLevel: "warning",
-    });
   }
 
   console.log(

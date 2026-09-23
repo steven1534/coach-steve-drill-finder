@@ -1,3 +1,5 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+
 const attempts = new Map();
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -8,11 +10,6 @@ function json(response, status, body) {
   response.setHeader("Cache-Control", "no-store");
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.end(JSON.stringify(body));
-}
-
-function bearer(request) {
-  const header = request.headers.authorization || "";
-  return header.startsWith("Bearer ") ? header.slice(7) : null;
 }
 
 function clientIp(request) {
@@ -35,42 +32,28 @@ function recordFailure(ip) {
   attempts.set(ip, entries);
 }
 
-export function decodeJwtPayload(token) {
-  try {
-    const segment = token.split(".")[1];
-    const padded =
-      segment.replace(/-/g, "+").replace(/_/g, "/") +
-      "=".repeat((4 - (segment.length % 4)) % 4);
-    return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
-  } catch {
-    return null;
-  }
+function digest(value) {
+  return createHash("sha256").update(String(value ?? ""), "utf8").digest();
 }
 
-export async function verifyCoachToken(token, env = process.env, fetcher = fetch) {
-  const url = env.SUPABASE_URL;
-  const key = env.SUPABASE_PUBLISHABLE_KEY;
-  const coachId = env.COACH_USER_ID;
-  if (!url || !key || !coachId || key.startsWith("sb_secret_")) return null;
+function secureEqual(left, right) {
+  return timingSafeEqual(digest(left), digest(right));
+}
 
-  const result = await fetcher(`${url}/auth/v1/user`, {
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  if (!result.ok) return null;
-  const user = await result.json();
-  const claims = decodeJwtPayload(token);
-  if (
-    !claims ||
-    user.id !== coachId ||
-    claims.sub !== coachId ||
-    claims.aal !== "aal2"
-  ) {
-    return null;
+export function verifyCoachCredentials(email, password, env = process.env) {
+  const expectedEmail = String(env.SYNC_COACH_EMAIL || "").trim().toLowerCase();
+  const expectedPassword = String(env.SYNC_COACH_PASSWORD || "");
+  const suppliedEmail = String(email || "").trim().toLowerCase();
+  const suppliedPassword = String(password || "");
+
+  if (!expectedEmail || !expectedPassword || !suppliedEmail || !suppliedPassword) {
+    return false;
   }
-  return { userId: user.id };
+
+  return (
+    secureEqual(suppliedEmail, expectedEmail) &&
+    secureEqual(suppliedPassword, expectedPassword)
+  );
 }
 
 export default async function handler(request, response) {
@@ -79,9 +62,16 @@ export default async function handler(request, response) {
     return json(response, 405, { message: "Method not allowed." });
   }
 
-  const allowedOrigin =
-    process.env.SYNC_ALLOWED_ORIGIN || "https://coachstevedrills.com";
-  if (request.headers.origin !== allowedOrigin) {
+  const origin = String(request.headers.origin || "");
+  const forwardedHost = String(request.headers["x-forwarded-host"] || "");
+  const host = forwardedHost || String(request.headers.host || "");
+  const proto = String(request.headers["x-forwarded-proto"] || "https");
+  const sameOrigin = host ? `${proto}://${host}` : "";
+  const configuredOrigin = String(
+    process.env.SYNC_ALLOWED_ORIGIN || "https://coachstevedrills.com"
+  );
+
+  if (!origin || (origin !== sameOrigin && origin !== configuredOrigin)) {
     return json(response, 403, { message: "Not authorized." });
   }
 
@@ -92,22 +82,25 @@ export default async function handler(request, response) {
     });
   }
 
-  const token = bearer(request);
-  if (!token) {
-    recordFailure(ip);
-    return json(response, 401, { message: "Coach authentication is required." });
+  let body = request.body;
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      body = {};
+    }
   }
 
-  let coach;
-  try {
-    coach = await verifyCoachToken(token);
-  } catch {
-    coach = null;
+  if (!process.env.SYNC_COACH_EMAIL || !process.env.SYNC_COACH_PASSWORD) {
+    return json(response, 503, {
+      message: "Coach sync login is not configured yet.",
+    });
   }
-  if (!coach) {
+
+  if (!verifyCoachCredentials(body?.email, body?.password)) {
     recordFailure(ip);
-    return json(response, 403, {
-      message: "Coach MFA verification is required.",
+    return json(response, 401, {
+      message: "That email or password is not correct.",
     });
   }
 
