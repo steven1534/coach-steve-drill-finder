@@ -35,7 +35,7 @@ function esc(value) {
 
 function show(message, tone = "") {
   result.textContent = message;
-  result.className = \`result \${tone}\`.trim();
+  result.className = `result ${tone}`.trim();
 }
 
 function setBusy(button, busy) {
@@ -60,7 +60,7 @@ async function api(action, extra = {}) {
 }
 
 async function readStatus() {
-  const response = await fetch(\`/sync-status.json?t=\${Date.now()}\`, {
+  const response = await fetch(`/sync-status.json?t=${Date.now()}`, {
     cache: "no-store",
   });
   if (!response.ok) return null;
@@ -81,24 +81,24 @@ function splitBatches(items, size) {
 
 function pills(values) {
   if (!Array.isArray(values) || !values.length) return '<span class="muted">None</span>';
-  return values.map((value) => \`<span class="pill">\${esc(value)}</span>\`).join("");
+  return values.map((value) => `<span class="pill">${esc(value)}</span>`).join("");
 }
 
 function renderChanged(items) {
   const changed = items.filter((item) => item.changed);
   changedSection.hidden = changed.length === 0;
-  changedList.innerHTML = changed.slice(0, 60).map((item) => \`
+  changedList.innerHTML = changed.slice(0, 60).map((item) => `
     <div class="compact-row">
       <div>
-        <strong>\${esc(item.name)}</strong>
-        <span>\${esc(item.reasons.join(" · ") || "Changed since last review")}</span>
+        <strong>${esc(item.name)}</strong>
+        <span>${esc(item.reasons.join(" · ") || "Changed since last review")}</span>
       </div>
     </div>
-  \`).join("");
+  `).join("");
   if (changed.length > 60) {
     changedList.insertAdjacentHTML(
       "beforeend",
-      \`<p class="muted">+\${changed.length - 60} more drills waiting for review.</p>\`,
+      `<p class="muted">+${changed.length - 60} more drills waiting for review.</p>`,
     );
   }
 }
@@ -108,41 +108,41 @@ function renderSuggestionCard(item) {
   const suggestion = review?.suggestions || {};
   const changed = review?.changedFields || [];
   const issues = review?.issues || [];
-  return \`
-    <article class="review-card" data-page-id="\${esc(item.pageId)}">
+  return `
+    <article class="review-card" data-page-id="${esc(item.pageId)}">
       <div class="review-card-head">
         <div>
-          <p class="eyebrow">\${esc(review?.confidence || "medium")} confidence</p>
-          <h3>\${esc(item.name)}</h3>
-          <p class="review-summary">\${esc(review?.reviewSummary || "")}</p>
+          <p class="eyebrow">${esc(review?.confidence || "medium")} confidence</p>
+          <h3>${esc(item.name)}</h3>
+          <p class="review-summary">${esc(review?.reviewSummary || "")}</p>
         </div>
-        <span class="change-count">\${changed.length} suggested change\${changed.length === 1 ? "" : "s"}</span>
+        <span class="change-count">${changed.length} suggested change${changed.length === 1 ? "" : "s"}</span>
       </div>
 
-      \${issues.length ? \`<div class="issues"><strong>AI flags:</strong> \${esc(issues.join(" · "))}</div>\` : ""}
+      ${issues.length ? `<div class="issues"><strong>AI flags:</strong> ${esc(issues.join(" · "))}</div>` : ""}
 
       <div class="field-grid">
         <label>
           <span>Coach Steve Cue</span>
-          <textarea data-field="coachCue" rows="2">\${esc(suggestion.coachCue || "")}</textarea>
+          <textarea data-field="coachCue" rows="2">${esc(suggestion.coachCue || "")}</textarea>
         </label>
         <label>
           <span>Why fixing this matters</span>
-          <textarea data-field="whyImportant" rows="4">\${esc(suggestion.whyImportant || "")}</textarea>
+          <textarea data-field="whyImportant" rows="4">${esc(suggestion.whyImportant || "")}</textarea>
         </label>
         <label>
           <span>What it fixes</span>
-          <textarea data-field="whatThisFixes" rows="4">\${esc(suggestion.whatThisFixes || "")}</textarea>
+          <textarea data-field="whatThisFixes" rows="4">${esc(suggestion.whatThisFixes || "")}</textarea>
         </label>
       </div>
 
       <div class="metadata-grid">
-        <div><strong>Problems</strong><div class="pill-row">\${pills(suggestion.problem)}</div></div>
-        <div><strong>Goals</strong><div class="pill-row">\${pills(suggestion.goal)}</div></div>
-        <div><strong>Tags</strong><div class="pill-row">\${pills(suggestion.tags)}</div></div>
-        <div><strong>Type</strong><div class="pill-row">\${pills(suggestion.drillType)}</div></div>
-        <div><strong>Age</strong><div class="pill-row">\${pills(suggestion.ageLevel)}</div></div>
-        <div><strong>Difficulty</strong><div class="pill-row">\${pills([suggestion.difficulty])}</div></div>
+        <div><strong>Problems</strong><div class="pill-row">${pills(suggestion.problem)}</div></div>
+        <div><strong>Goals</strong><div class="pill-row">${pills(suggestion.goal)}</div></div>
+        <div><strong>Tags</strong><div class="pill-row">${pills(suggestion.tags)}</div></div>
+        <div><strong>Type</strong><div class="pill-row">${pills(suggestion.drillType)}</div></div>
+        <div><strong>Age</strong><div class="pill-row">${pills(suggestion.ageLevel)}</div></div>
+        <div><strong>Difficulty</strong><div class="pill-row">${pills([suggestion.difficulty])}</div></div>
       </div>
 
       <div class="review-actions">
@@ -150,7 +150,7 @@ function renderSuggestionCard(item) {
         <button type="button" data-action="ignore" class="secondary">Ignore Until This Drill Changes</button>
       </div>
     </article>
-  \`;
+  `;
 }
 
 function renderSuggestions(items) {
@@ -170,14 +170,14 @@ async function refreshScan({ quiet = false } = {}) {
   suggestionsCount.textContent = String(data.suggestionsReady ?? "—");
   reviewButton.disabled = !data.aiConfigured || data.needsReview < 1;
   reviewButton.textContent = data.needsReview > 0
-    ? \`Review \${data.needsReview} New & Changed Drill\${data.needsReview === 1 ? "" : "s"}\`
+    ? `Review ${data.needsReview} New & Changed Drill${data.needsReview === 1 ? "" : "s"}`
     : "No New Changes to Review";
   if (!data.aiConfigured) {
     show("GPT-6 Luna is not configured yet. Add OPENAI_API_KEY in Vercel.", "error");
   } else if (!quiet) {
     show(
       data.needsReview
-        ? \`\${data.needsReview} drill\${data.needsReview === 1 ? "" : "s"} waiting for AI review.\`
+        ? `${data.needsReview} drill${data.needsReview === 1 ? "" : "s"} waiting for AI review.`
         : "LIVE Drill Library is fully reviewed.",
       data.needsReview ? "" : "success",
     );
@@ -190,8 +190,8 @@ async function refreshScan({ quiet = false } = {}) {
 function setProgress(current, total, label) {
   progressWrap.hidden = false;
   const percent = total ? Math.round((current / total) * 100) : 0;
-  progressBar.style.width = \`\${percent}%\`;
-  progressText.textContent = \`\${label} \${current} of \${total}\`;
+  progressBar.style.width = `${percent}%`;
+  progressText.textContent = `${label} ${current} of ${total}`;
 }
 
 function hideProgress() {
@@ -218,7 +218,7 @@ async function runAiReview() {
       reviewed += batch.length;
       setProgress(reviewed, pending.length, "Reviewed");
     }
-    show(\`AI review complete. \${reviewed} drill\${reviewed === 1 ? "" : "s"} are ready for approval.\`, "success");
+    show(`AI review complete. ${reviewed} drill${reviewed === 1 ? "" : "s"} are ready for approval.`, "success");
     await refreshScan({ quiet: true });
   } catch (error) {
     show(error.message || "AI review failed.", "error");
@@ -287,7 +287,7 @@ async function approveAll() {
       card.remove();
       setProgress(done, cards.length, "Approved");
     }
-    show(\`\${cards.length} AI suggestion\${cards.length === 1 ? "" : "s"} approved and written to Notion.\`, "success");
+    show(`${cards.length} AI suggestion${cards.length === 1 ? "" : "s"} approved and written to Notion.`, "success");
     await refreshScan({ quiet: true });
   } catch (error) {
     show(error.message || "Bulk approval stopped before completion.", "error");
@@ -320,7 +320,7 @@ async function publish() {
       const current = await readStatus();
       if (current?.generatedAt && current.generatedAt !== original) {
         statusBeforeSync = current;
-        show(\`Publish complete. \${current.drillCount} drills are live.\`, "success");
+        show(`Publish complete. ${current.drillCount} drills are live.`, "success");
         return;
       }
     }
@@ -349,7 +349,7 @@ loginForm.addEventListener("submit", async (event) => {
     if (scanState?.aiConfigured) {
       show(
         scanState.needsReview
-          ? \`\${scanState.needsReview} drill\${scanState.needsReview === 1 ? "" : "s"} waiting for AI review.\`
+          ? `${scanState.needsReview} drill${scanState.needsReview === 1 ? "" : "s"} waiting for AI review.`
           : "LIVE Drill Library is fully reviewed.",
         scanState.needsReview ? "" : "success",
       );
