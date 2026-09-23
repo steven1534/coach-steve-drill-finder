@@ -8,6 +8,7 @@ const TEXT_FIELDS = [
   "commonMistakes",
   "nextSteps",
   "whatThisFixes",
+  "whyImportant",
 ];
 
 const LABEL_ALIASES = new Map([
@@ -30,6 +31,8 @@ const LABEL_ALIASES = new Map([
   ["nextsteps", "nextSteps"],
   ["whatthisfixes", "whatThisFixes"],
   ["whatitfixes", "whatThisFixes"],
+  ["whyimportant", "whyImportant"],
+  ["whyfixingthisisimportant", "whyImportant"],
   ["equipment", "equipment"],
   ["category", "category"],
   ["difficulty", "difficulty"],
@@ -45,7 +48,7 @@ const LABEL_ALIASES = new Map([
 ]);
 
 const LABEL_PATTERN =
-  /\*{0,2}\s*(related\s*drills|sync\s*to\s*site|foundation\s*or\s*advanced|thumbnail\s*url|drill\s*name|drill\s*type|source\s*url|video\s*url|age\s*level|description|purpose|how\s*to\s*do\s*it|howToDoIt|watch\s*for|watchFor|what\s*to\s*feel|whatToFeel|coach\s*(?:steve\s*)?cue|coachCue|coachingCue|common\s*mistakes|commonMistakes|best\s*for|bestFor|next\s*steps|nextSteps|what\s*(?:this|it)\s*fixes|whatThisFixes|equipment|featured|category|difficulty|goal|problem|duration|tags|dr)\s*:\s*\*{0,2}/gi;
+  /\*{0,2}\s*(related\s*drills|sync\s*to\s*site|foundation\s*or\s*advanced|thumbnail\s*url|drill\s*name|drill\s*type|source\s*url|video\s*url|age\s*level|description|purpose|how\s*to\s*do\s*it|howToDoIt|watch\s*for|watchFor|what\s*to\s*feel|whatToFeel|coach\s*(?:steve\s*)?cue|coachCue|coachingCue|common\s*mistakes|commonMistakes|best\s*for|bestFor|next\s*steps|nextSteps|what\s*(?:this|it)\s*fixes|whatThisFixes|why\s*(?:fixing\s*this\s*is\s*)?important|whyImportant|equipment|featured|category|difficulty|goal|problem|duration|tags|dr)\s*:\s*\*{0,2}/gi;
 
 function canonicalLabel(label) {
   return LABEL_ALIASES.get(String(label).toLowerCase().replace(/\s+/g, "")) || "";
