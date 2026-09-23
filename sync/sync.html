@@ -17,43 +17,47 @@
         <circle cx="20" cy="20" r="16" stroke="currentColor" stroke-width="3"/>
         <path d="M11 8.5c4 6 4 17 0 23M29 8.5c-4 6-4 17 0 23" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
       </svg>
+
       <p class="eyebrow">Coach controls</p>
       <h1 id="sync-title">Sync Drill Finder</h1>
-      <p class="lede">Pull every addition, edit, rename, and removal from the LIVE Drill Library, then publish the encrypted update.</p>
+      <p class="lede">Sign in below to pull the latest additions, edits, renames, and removals directly from your Notion Drill Library.</p>
 
-      <div id="authStage">
-        <form id="loginForm" class="sync-form">
-          <label for="email">Coach email</label>
-          <input id="email" name="email" type="email" autocomplete="username" required data-testid="input-coach-email">
-          <label for="password">Password</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" required data-testid="input-coach-password">
-          <button type="submit" data-testid="button-coach-login">Continue</button>
-        </form>
+      <dl class="sync-stats" id="syncStats">
+        <div><dt>Last sync</dt><dd id="lastSync">Checking…</dd></div>
+        <div><dt>Live drills</dt><dd id="liveCount">—</dd></div>
+      </dl>
 
-        <form id="mfaForm" class="sync-form" hidden>
-          <label for="totp">Google Authenticator code</label>
-          <input id="totp" name="totp" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required data-testid="input-coach-totp">
-          <button type="submit" data-testid="button-verify-totp">Verify</button>
-        </form>
-      </div>
+      <form id="syncForm" class="sync-form">
+        <label for="email">Coach email</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autocomplete="username"
+          value="coachstevengoldstein@gmail.com"
+          required
+          data-testid="input-coach-email"
+        >
 
-      <div id="readyStage" hidden>
-        <div class="status-row">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span>Coach MFA verified</span>
-        </div>
-        <dl class="sync-stats" id="syncStats">
-          <div><dt>Last sync</dt><dd id="lastSync">Checking…</dd></div>
-          <div><dt>Live drills</dt><dd id="liveCount">—</dd></div>
-        </dl>
-        <button id="syncButton" type="button" data-testid="button-sync-notion">Sync from Notion</button>
-        <button id="logoutButton" type="button" class="secondary" data-testid="button-coach-logout">Sign out</button>
-      </div>
+        <label for="password">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+          data-testid="input-coach-password"
+        >
+
+        <button id="syncButton" type="submit" data-testid="button-sync-notion">
+          Sync from Notion
+        </button>
+      </form>
 
       <div id="result" class="result" role="status" aria-live="polite"></div>
       <a class="back-link" href="/">Back to Drill Finder</a>
     </section>
   </main>
-  <script type="module" src="/sync-client.js"></script>
+  <script src="/sync-client.js" defer></script>
 </body>
 </html>
