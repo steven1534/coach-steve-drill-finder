@@ -69,6 +69,7 @@ const normalized = normalizeReview(
       drillType: ["Timing Drill"],
       ageLevel: ["Intermediate"],
       difficulty: "Medium",
+      category: ["Hitting"],
     },
   },
   {},
@@ -76,5 +77,6 @@ const normalized = normalizeReview(
 assert.deepEqual(normalized.changedFields, ["coachCue"]);
 assert.deepEqual(normalized.suggestions.problem, ["timing"]);
 assert.equal(normalized.suggestions.coachCue, "Control the move.");
+assert.deepEqual(normalized.suggestions.category, ["Hitting"]);
 
 console.log("ai_review_tests=PASS");
