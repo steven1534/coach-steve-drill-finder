@@ -1,4 +1,4 @@
-import { clearSessionCookie, json, readSessionCode, unlock } from "./_drillAccess.js";
+import { clearSessionCookie, json, readSessionCode, unlock } from "../lib/drillAccess.js";
 
 export default async function handler(request, response) {
   if (request.method !== "GET") {
