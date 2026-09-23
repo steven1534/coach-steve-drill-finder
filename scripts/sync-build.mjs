@@ -351,11 +351,48 @@ async function main() {
     process.env.VERCEL_ENV === "preview" ||
     process.env.VERCEL_GIT_COMMIT_REF === "feature/server-side-player-access"
   ) {
+    if (!notionToken) {
+      throw new Error("NOTION_API_KEY is required for preview drill access.");
+    }
+
+    let rows = await fetchNotionRows(notionToken);
+    if (!Array.isArray(rows)) throw new Error("Notion preview export has no results array.");
+
+    const syncPartition = partitionBySyncFlag(rows);
+    rows = syncPartition.enabled.map(sanitizeNotionRow);
+    if (rows.length < 150) {
+      throw new Error(`Preview Notion drill count is unexpectedly low: ${rows.length}.`);
+    }
+
+    const seedDrills = rows.map((row) => {
+      const name = String(row.drillName || row.Dr || "").trim();
+      if (!name) throw new Error("Notion preview contains a drill without a name.");
+      return {
+        id: newId(name, row.url),
+        notionId: String(row.notionId || ""),
+        name,
+        focus: deriveFocus(row),
+      };
+    });
+
+    const { drills } = mergeNotionRows(seedDrills, rows);
+    await writeFile(
+      path.join(ROOT, "lib", "previewDrills.generated.js"),
+      `export default ${JSON.stringify(drills)};\n`,
+      { mode: 0o600 },
+    );
+
     await mkdir(path.join(ROOT, "dist"), { recursive: true });
-    for (const file of ["index.html", "app.js", "styles.css", "data.js"]) {
+    for (const file of ["index.html", "app.js", "styles.css"]) {
       await cp(path.join(SOURCE, file), path.join(ROOT, "dist", file));
     }
-    console.log(JSON.stringify({ result: "preview-static", protectedSyncSkipped: true }));
+
+    console.log(JSON.stringify({
+      result: "preview-notion",
+      drillCount: drills.length,
+      syncEnabledCount: syncPartition.enabled.length,
+      syncDisabledCount: syncPartition.disabled.length,
+    }));
     return;
   }
   if (!accessCode && !maintenanceCode) {
