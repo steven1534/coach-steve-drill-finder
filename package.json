@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node scripts/test-sync.mjs && node scripts/test-sync-route.mjs",
+    "test": "node scripts/test-sync.mjs && node scripts/test-sync-route.mjs && node scripts/test-ai-review.mjs",
     "build": "node scripts/sync-build.mjs",
     "rotate-temp": "node scripts/rotate-temp.mjs"
   },
