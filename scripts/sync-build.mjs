@@ -348,7 +348,8 @@ async function main() {
   const exportKey = process.env.DRILL_SYNC_EXPORT_KEY;
   const notionToken = process.env.NOTION_API_KEY;
   if (
-    process.env.VERCEL_ENV === "preview" &&
+    (process.env.VERCEL_ENV === "preview" ||
+      process.env.VERCEL_GIT_COMMIT_REF === "feature/server-side-player-access") &&
     (!accessCode && !maintenanceCode || !notionToken && !exportKey)
   ) {
     await mkdir(path.join(ROOT, "dist"), { recursive: true });
