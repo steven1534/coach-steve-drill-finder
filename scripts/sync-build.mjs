@@ -347,6 +347,105 @@ async function main() {
   const maintenanceCode = process.env.DRILL_SYNC_MAINTENANCE_CODE;
   const exportKey = process.env.DRILL_SYNC_EXPORT_KEY;
   const notionToken = process.env.NOTION_API_KEY;
+  const mappedAccessConfigured = Boolean(
+    process.env.DRILL_ACCESS_CODES ||
+    (process.env.VERCEL_ENV === "preview" && process.env.DRILL_PREVIEW_ACCESS_CODES)
+  );
+
+  if (mappedAccessConfigured) {
+    if (!notionToken) {
+      throw new Error("NOTION_API_KEY is required for server-side drill access.");
+    }
+
+    let rows = await fetchNotionRows(notionToken);
+    if (!Array.isArray(rows)) throw new Error("Notion export has no results array.");
+
+    const syncPartition = partitionBySyncFlag(rows);
+    rows = syncPartition.enabled.map(sanitizeNotionRow);
+    if (rows.length < 150 || rows.length > 500) {
+      throw new Error(`Notion drill count is outside the safety range: ${rows.length}.`);
+    }
+
+    const seedDrills = rows.map((row) => {
+      const name = String(row.drillName || row.Dr || "").trim();
+      if (!name) throw new Error("Notion export contains a drill without a name.");
+      return {
+        id: newId(name, row.url),
+        notionId: String(row.notionId || ""),
+        name,
+        focus: deriveFocus(row),
+      };
+    });
+
+    const { drills } = mergeNotionRows(seedDrills, rows);
+    await writeFile(
+      path.join(ROOT, "lib", "drills.generated.js"),
+      `export default ${JSON.stringify(drills)};\n`,
+      { mode: 0o600 },
+    );
+
+    await mkdir(path.join(ROOT, "dist"), { recursive: true });
+    for (const file of ["index.html", "app.js", "styles.css"]) {
+      await cp(path.join(SOURCE, file), path.join(ROOT, "dist", file));
+    }
+
+    const digest = createHash("sha256")
+      .update(JSON.stringify(drills))
+      .digest("hex");
+    const generatedAt = new Date().toISOString();
+    await writeFile(
+      path.join(ROOT, "dist", "sync-status.json"),
+      JSON.stringify({
+        generatedAt,
+        drillCount: drills.length,
+        syncEnabledCount: syncPartition.enabled.length,
+        syncDisabledCount: syncPartition.disabled.length,
+        contentSha256: digest,
+      }),
+    );
+
+    const syncDirectory = path.join(ROOT, "sync");
+    if (existsSync(path.join(syncDirectory, "sync.html"))) {
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+      if (
+        !supabaseUrl ||
+        !publishableKey ||
+        publishableKey.startsWith("sb_secret_")
+      ) {
+        throw new Error("Public coach Auth build configuration is missing.");
+      }
+      await cp(path.join(syncDirectory, "sync.html"), path.join(ROOT, "dist", "sync.html"));
+      await cp(path.join(syncDirectory, "sync.css"), path.join(ROOT, "dist", "sync.css"));
+      await writeFile(
+        path.join(ROOT, "dist", "sync-config.json"),
+        JSON.stringify({
+          supabaseUrl,
+          supabasePublishableKey: publishableKey,
+        }),
+      );
+      const { build } = await import("esbuild");
+      await build({
+        entryPoints: [path.join(syncDirectory, "sync-client.js")],
+        bundle: true,
+        format: "esm",
+        platform: "browser",
+        minify: true,
+        outfile: path.join(ROOT, "dist", "sync-client.js"),
+        logLevel: "warning",
+      });
+    }
+
+    console.log(JSON.stringify({
+      result: "server-access-notion",
+      generatedAt,
+      drillCount: drills.length,
+      syncEnabledCount: syncPartition.enabled.length,
+      syncDisabledCount: syncPartition.disabled.length,
+      contentSha256: digest,
+    }));
+    return;
+  }
   if (!accessCode && !maintenanceCode) {
     throw new Error("Required protected sync build variables are missing.");
   }
