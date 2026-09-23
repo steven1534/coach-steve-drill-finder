@@ -49,6 +49,19 @@
           "value": "nosniff"
         }
       ]
+    },
+    {
+      "source": "/api/ai-review",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
     }
   ],
   "functions": {
@@ -60,6 +73,9 @@
     },
     "api/library.js": {
       "includeFiles": "data.js"
+    },
+    "api/ai-review.js": {
+      "maxDuration": 60
     }
   }
 }
