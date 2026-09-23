@@ -62,7 +62,7 @@ function initApp(drills) {
 
 /* ---------- filtering ---------- */
 function drillHand(d) {
-  const t = (d.name + ' ' + d.fixes + ' ' + d.description + ' ' + d.howTo).toLowerCase();
+  const t = (d.name + ' ' + d.fixes + ' ' + (d.whyImportant || '') + ' ' + d.description + ' ' + d.howTo).toLowerCase();
   if (/\b(left-?hand|lefty|lefties)\b/.test(t)) return 'Lefty';
   if (/\b(right-?hand|righty|righties)\b/.test(t)) return 'Righty';
   return 'Any';
@@ -79,7 +79,7 @@ function matches(d) {
     if (h !== 'Any' && h !== state.hand) return false;
   }
   if (state.q) {
-    const hay = [d.name, d.fixes, d.purpose, d.description, d.cue, d.problems.join(' '), d.goals.join(' '), d.tags.join(' '), d.equipment.join(' '), d.drillType].join(' ').toLowerCase();
+    const hay = [d.name, d.fixes, d.whyImportant || '', d.purpose, d.description, d.cue, d.problems.join(' '), d.goals.join(' '), d.tags.join(' '), d.equipment.join(' '), d.drillType].join(' ').toLowerCase();
     if (!state.q.toLowerCase().split(/\s+/).every((w) => hay.includes(w))) return false;
   }
   return true;
