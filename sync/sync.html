@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <title>Sync Drill Finder | Coach Steve</title>
+  <title>Coach Controls | Drill Finder</title>
   <link rel="preconnect" href="https://api.fontshare.com">
   <link href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/sync.css">
@@ -13,48 +13,82 @@
   <a class="skip-link" href="#main">Skip to content</a>
   <main id="main" class="sync-shell">
     <section class="sync-card" aria-labelledby="sync-title">
-      <svg class="sync-logo" viewBox="0 0 40 40" fill="none" aria-label="Coach Steve Drill Finder">
-        <circle cx="20" cy="20" r="16" stroke="currentColor" stroke-width="3"/>
-        <path d="M11 8.5c4 6 4 17 0 23M29 8.5c-4 6-4 17 0 23" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
-      </svg>
+      <header class="control-head">
+        <svg class="sync-logo" viewBox="0 0 40 40" fill="none" aria-label="Coach Steve Drill Finder">
+          <circle cx="20" cy="20" r="16" stroke="currentColor" stroke-width="3"/>
+          <path d="M11 8.5c4 6 4 17 0 23M29 8.5c-4 6-4 17 0 23" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        <div>
+          <p class="eyebrow">Coach controls</p>
+          <h1 id="sync-title">LIVE Drill Library</h1>
+          <p class="lede">Review Notion changes with GPT-6 Luna, approve the copy and metadata you want, then publish the LIVE Drill Library to Coach Steve Drill Finder.</p>
+        </div>
+      </header>
 
-      <p class="eyebrow">Coach controls</p>
-      <h1 id="sync-title">Sync Drill Finder</h1>
-      <p class="lede">Sign in below to pull the latest additions, edits, renames, and removals directly from your Notion Drill Library.</p>
+      <section id="authStage">
+        <form id="loginForm" class="sync-form login-form">
+          <label for="email">Coach email</label>
+          <input id="email" name="email" type="email" autocomplete="username" value="coachstevengoldstein@gmail.com" required>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <button type="submit">Open Coach Controls</button>
+        </form>
+      </section>
 
-      <dl class="sync-stats" id="syncStats">
-        <div><dt>Last sync</dt><dd id="lastSync">Checking…</dd></div>
-        <div><dt>Live drills</dt><dd id="liveCount">—</dd></div>
-      </dl>
+      <section id="controlStage" hidden>
+        <dl class="sync-stats">
+          <div><dt>Live drills</dt><dd id="liveCount">—</dd></div>
+          <div><dt>Needs AI review</dt><dd id="needsReviewCount">—</dd></div>
+          <div><dt>Suggestions ready</dt><dd id="suggestionsCount">—</dd></div>
+          <div><dt>Last publish</dt><dd id="lastSync">—</dd></div>
+        </dl>
 
-      <form id="syncForm" class="sync-form">
-        <label for="email">Coach email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autocomplete="username"
-          value="coachstevengoldstein@gmail.com"
-          required
-          data-testid="input-coach-email"
-        >
+        <div class="action-grid">
+          <button id="reviewButton" type="button">
+            Review New & Changed Drills
+          </button>
+          <button id="refreshButton" type="button" class="secondary">
+            Refresh Review Queue
+          </button>
+          <button id="publishButton" type="button" class="publish">
+            Publish to Drill Finder
+          </button>
+          <button id="logoutButton" type="button" class="secondary">
+            Sign Out
+          </button>
+        </div>
 
-        <label for="password">Password</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          autocomplete="current-password"
-          required
-          data-testid="input-coach-password"
-        >
+        <div id="progressWrap" class="progress-wrap" hidden>
+          <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+          <p id="progressText" class="progress-text"></p>
+        </div>
 
-        <button id="syncButton" type="submit" data-testid="button-sync-notion">
-          Sync from Notion
-        </button>
-      </form>
+        <div id="result" class="result" role="status" aria-live="polite"></div>
 
-      <div id="result" class="result" role="status" aria-live="polite"></div>
+        <section id="changedSection" class="review-section" hidden>
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Detected changes</p>
+              <h2>Waiting for AI review</h2>
+            </div>
+          </div>
+          <div id="changedList" class="compact-list"></div>
+        </section>
+
+        <section id="suggestionsSection" class="review-section" hidden>
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">GPT-6 Luna</p>
+              <h2>Suggestions ready for approval</h2>
+            </div>
+            <button id="approveAllButton" type="button" class="secondary compact">
+              Approve All Suggestions
+            </button>
+          </div>
+          <div id="reviewQueue" class="review-queue"></div>
+        </section>
+      </section>
+
       <a class="back-link" href="/">Back to Drill Finder</a>
     </section>
   </main>
