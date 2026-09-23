@@ -347,10 +347,14 @@ async function main() {
   const maintenanceCode = process.env.DRILL_SYNC_MAINTENANCE_CODE;
   const exportKey = process.env.DRILL_SYNC_EXPORT_KEY;
   const notionToken = process.env.NOTION_API_KEY;
-  const mappedAccessConfigured = Boolean(
-    process.env.DRILL_ACCESS_CODES ||
-    (process.env.VERCEL_ENV === "preview" && process.env.DRILL_PREVIEW_ACCESS_CODES)
+  const productionAccessConfigured = Boolean(process.env.DRILL_ACCESS_CODES);
+  const previewAccessConfigured = Boolean(
+    process.env.VERCEL_ENV === "preview" &&
+    process.env.DRILL_PREVIEW_ACCESS_CODES &&
+    notionToken
   );
+  const mappedAccessConfigured =
+    productionAccessConfigured || previewAccessConfigured;
 
   if (mappedAccessConfigured) {
     if (!notionToken) {
