@@ -235,6 +235,7 @@ function openDrill(id) {
       </div>
       ${d.cue ? `<div class="cue-box">&ldquo;${esc(d.cue.replace(/^[“"]+|[”"]+$/g, ''))}&rdquo;</div>` : ''}
       ${(d.fixes || d.problems.length) ? `<div class="m-section"><h3>What it fixes</h3><p>${esc(d.fixes || d.problems.join(', '))}</p></div>` : ''}
+      ${d.whyImportant ? `<div class="m-section"><h3>Why fixing this matters</h3><p>${esc(d.whyImportant)}</p></div>` : ''}
       ${d.howTo ? `<div class="m-section"><h3>How to run it</h3>${steps(d.howTo)}</div>` : ''}
       <div class="two-col">
         ${d.feel ? `<div class="m-section"><h3>What to feel</h3><p>${esc(d.feel)}</p></div>` : ''}
