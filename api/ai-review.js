@@ -65,7 +65,7 @@ function sameOriginAllowed(request) {
   const forwardedHost = String(request.headers["x-forwarded-host"] || "");
   const host = forwardedHost || String(request.headers.host || "");
   const proto = String(request.headers["x-forwarded-proto"] || "https");
-  const sameOrigin = host ? \`\${proto}://\${host}\` : "";
+  const sameOrigin = host ? `${proto}://${host}` : "";
   const configuredOrigin = String(
     process.env.SYNC_ALLOWED_ORIGIN || "https://coachstevedrills.com"
   );
@@ -163,7 +163,7 @@ export default async function handler(request, response) {
       const saved = [];
       for (const row of selected) {
         const review = byId.get(row.pageId);
-        if (!review) throw new Error(\`Luna did not return a review for \${row.drillName || row.Dr}.\`);
+        if (!review) throw new Error(`Luna did not return a review for ${row.drillName || row.Dr}.`);
         saved.push(await storeReview(row, review, notionToken, ai.usage));
       }
       return json(response, 200, {
