@@ -62,9 +62,16 @@ export default async function handler(request, response) {
     return json(response, 405, { message: "Method not allowed." });
   }
 
-  const allowedOrigin =
-    process.env.SYNC_ALLOWED_ORIGIN || "https://coachstevedrills.com";
-  if (request.headers.origin !== allowedOrigin) {
+  const origin = String(request.headers.origin || "");
+  const forwardedHost = String(request.headers["x-forwarded-host"] || "");
+  const host = forwardedHost || String(request.headers.host || "");
+  const proto = String(request.headers["x-forwarded-proto"] || "https");
+  const sameOrigin = host ? `${proto}://${host}` : "";
+  const configuredOrigin = String(
+    process.env.SYNC_ALLOWED_ORIGIN || "https://coachstevedrills.com"
+  );
+
+  if (!origin || (origin !== sameOrigin && origin !== configuredOrigin)) {
     return json(response, 403, { message: "Not authorized." });
   }
 
