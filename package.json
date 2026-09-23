@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node scripts/test-sync.mjs && node scripts/test-sync-route.mjs && node scripts/test-ai-review.mjs",
-    "build": "node scripts/sync-build.mjs",
+    "build": "npm test && node scripts/sync-build.mjs",
     "rotate-temp": "node scripts/rotate-temp.mjs"
   },
   "dependencies": {
