@@ -437,46 +437,43 @@ $('#planLink').addEventListener('focus', (e) => e.target.select());
 }));
 window.addEventListener('hashchange', () => { if (applyHash()) render(); });
 
-/* ---------- access gate (AES-GCM encrypted dataset) ---------- */
-const enc = new TextEncoder();
-const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-const COOKIE = '__Host-csdf';
-function saveCode(v) {
-  try { document.cookie = `${COOKIE}=${encodeURIComponent(v)}; Secure; Path=/; SameSite=Lax; Max-Age=31536000`; } catch (e) {}
-}
-function readCode() {
+/* ---------- access gate (server-side session) ---------- */
+let accessContext = { accessId: null, role: "player" };
+
+async function loadLibrary() {
   try {
-    const m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE.replace(/[-]/g, '\\$&') + '=([^;]*)'));
-    return m ? decodeURIComponent(m[1]) : null;
-  } catch (e) { return null; }
-}
-function clearCode() {
-  try { document.cookie = `${COOKIE}=; Secure; Path=/; SameSite=Lax; Max-Age=0`; } catch (e) {}
+    const response = await fetch('/api/library', {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store'
+    });
+    if (!response.ok) return false;
+    const payload = await response.json();
+    if (!Array.isArray(payload.drills)) return false;
+    accessContext = { accessId: payload.accessId || null, role: payload.role || 'player' };
+    initApp(payload.drills);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function tryUnlock(code) {
-  const norm = code.trim().toUpperCase();
+  const norm = String(code || '').trim().toUpperCase();
   if (!norm) return false;
   try {
-    const baseKey = await crypto.subtle.importKey('raw', enc.encode(norm), 'PBKDF2', false, ['deriveKey']);
-    // v3: one shared salt -> derive once, then try every wrap (fast)
-    const kek = await crypto.subtle.deriveKey(
-      { name: 'PBKDF2', salt: b64(ENC_DRILLS.salt), iterations: ENC_DRILLS.iter, hash: 'SHA-256' },
-      baseKey, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
-    );
-    for (const w of ENC_DRILLS.wraps) {
-      try {
-        const masterRaw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(w.iv) }, kek, b64(w.wk));
-        const master = await crypto.subtle.importKey('raw', masterRaw, 'AES-GCM', false, ['decrypt']);
-        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(ENC_DRILLS.iv) }, master, b64(ENC_DRILLS.data));
-        const drills = JSON.parse(new TextDecoder().decode(pt));
-        saveCode(norm);
-        initApp(drills);
-        return true;
-      } catch (e) { /* try next wrap */ }
-    }
-  } catch (e) { /* fall through */ }
-  return false;
+    const response = await fetch('/api/access', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ code: norm })
+    });
+    if (!response.ok) return false;
+    return await loadLibrary();
+  } catch {
+    return false;
+  }
 }
 
 const gateForm = $('#gateForm');
@@ -491,14 +488,15 @@ gateForm.addEventListener('submit', async (e) => {
 });
 
 const lockBtn = $('#lockBtn');
-if (lockBtn) lockBtn.onclick = () => {
-  clearCode();
+if (lockBtn) lockBtn.onclick = async () => {
+  try {
+    await fetch('/api/access', { method: 'DELETE', credentials: 'same-origin' });
+  } catch {}
   location.reload();
 };
 
 (async () => {
-  const saved = readCode();
-  if (saved && (await tryUnlock(saved))) return;
+  if (await loadLibrary()) return;
   $('#gate').hidden = false;
   $('#gateInput').focus();
 })();
