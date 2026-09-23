@@ -406,34 +406,9 @@ async function main() {
 
     const syncDirectory = path.join(ROOT, "sync");
     if (existsSync(path.join(syncDirectory, "sync.html"))) {
-      const supabaseUrl = process.env.SUPABASE_URL;
-      const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
-      if (
-        !supabaseUrl ||
-        !publishableKey ||
-        publishableKey.startsWith("sb_secret_")
-      ) {
-        throw new Error("Public coach Auth build configuration is missing.");
-      }
       await cp(path.join(syncDirectory, "sync.html"), path.join(ROOT, "dist", "sync.html"));
       await cp(path.join(syncDirectory, "sync.css"), path.join(ROOT, "dist", "sync.css"));
-      await writeFile(
-        path.join(ROOT, "dist", "sync-config.json"),
-        JSON.stringify({
-          supabaseUrl,
-          supabasePublishableKey: publishableKey,
-        }),
-      );
-      const { build } = await import("esbuild");
-      await build({
-        entryPoints: [path.join(syncDirectory, "sync-client.js")],
-        bundle: true,
-        format: "esm",
-        platform: "browser",
-        minify: true,
-        outfile: path.join(ROOT, "dist", "sync-client.js"),
-        logLevel: "warning",
-      });
+      await cp(path.join(syncDirectory, "sync-client.js"), path.join(ROOT, "dist", "sync-client.js"));
     }
 
     console.log(JSON.stringify({
@@ -553,15 +528,6 @@ async function main() {
 
   const syncDirectory = path.join(ROOT, "sync");
   if (existsSync(path.join(syncDirectory, "sync.html"))) {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
-    if (
-      !supabaseUrl ||
-      !publishableKey ||
-      publishableKey.startsWith("sb_secret_")
-    ) {
-      throw new Error("Public coach Auth build configuration is missing.");
-    }
     await cp(
       path.join(syncDirectory, "sync.html"),
       path.join(ROOT, "dist", "sync.html"),
@@ -570,23 +536,10 @@ async function main() {
       path.join(syncDirectory, "sync.css"),
       path.join(ROOT, "dist", "sync.css"),
     );
-    await writeFile(
-      path.join(ROOT, "dist", "sync-config.json"),
-      JSON.stringify({
-        supabaseUrl,
-        supabasePublishableKey: publishableKey,
-      }),
+    await cp(
+      path.join(syncDirectory, "sync-client.js"),
+      path.join(ROOT, "dist", "sync-client.js"),
     );
-    const { build } = await import("esbuild");
-    await build({
-      entryPoints: [path.join(syncDirectory, "sync-client.js")],
-      bundle: true,
-      format: "esm",
-      platform: "browser",
-      minify: true,
-      outfile: path.join(ROOT, "dist", "sync-client.js"),
-      logLevel: "warning",
-    });
   }
 
   console.log(
