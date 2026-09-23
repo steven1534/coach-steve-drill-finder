@@ -1,4 +1,4 @@
-import { clearSessionCookie, json, setSessionCookie, unlock } from "../lib/drillAccess.js";
+import { clearSessionCookie, json, previewDiagnostics, setSessionCookie, unlock } from "../lib/drillAccess.js";
 
 const attempts = new Map();
 const WINDOW_MS = 15 * 60 * 1000;
@@ -19,6 +19,9 @@ function fail(key) {
 }
 
 export default async function handler(request, response) {
+  if (request.method === "GET" && process.env.VERCEL_ENV === "preview") {
+    return json(response, 200, await previewDiagnostics(request));
+  }
   if (request.method === "DELETE") {
     clearSessionCookie(response);
     return json(response, 200, { ok: true });
