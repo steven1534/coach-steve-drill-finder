@@ -458,3 +458,23 @@ body:has(.session-banner:not([hidden])) .stadium-hero { display:none; }
 
 /* Session delivery controls */
 .send-hint{font-size:15px;color:var(--text-2);line-height:1.5}.send-hint:empty{display:none}#sendStatus{color:var(--accent)}.build-output button{min-height:44px}.build-fields input{min-height:46px}#textSessionBtn:disabled{opacity:.45;cursor:not-allowed}
+
+/* Drill guide: independent toolbar and viewport-safe scrolling. */
+.modal-backdrop{padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));overflow:hidden}
+.modal{display:flex;flex-direction:column;max-height:calc(100vh - 32px);max-height:calc(100dvh - max(12px,env(safe-area-inset-top)) - max(12px,env(safe-area-inset-bottom)));overflow:hidden}
+.drill-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 16px 8px 24px;flex:0 0 auto;background:var(--surface);border-bottom:1px solid var(--border);z-index:2}
+.drill-toolbar>span{font-size:12px;letter-spacing:2px;color:var(--text-2);font-weight:700}
+.drill-close{display:flex;align-items:center;gap:14px;min-width:108px;min-height:48px;padding:8px 16px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);font-size:16px;font-weight:700;touch-action:manipulation}
+.drill-close span{font-size:28px;line-height:1}
+.drill-scroll{min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.modal-video{width:100%;flex-shrink:0}.yt-fallback{padding:12px;min-height:44px;font-size:14px}
+.modal-content{gap:26px}.modal-title-row{gap:16px}.modal-badges{gap:8px}.modal-purpose{font-size:18px!important;line-height:1.65!important;color:var(--text)}
+.drill-goal h3{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin:8px 0}
+.modal-content>.m-section ol{list-style:none;padding:0;counter-reset:step;gap:12px}
+.modal-content>.m-section ol li{counter-increment:step;display:grid;grid-template-columns:30px minmax(0,1fr);gap:12px;align-items:start;padding:14px;background:var(--surface-2);border-radius:10px;line-height:1.6}
+.modal-content>.m-section ol li:before{content:counter(step);display:grid;place-items:center;width:28px;height:28px;border:1px solid var(--border);border-radius:50%;color:var(--accent);font-size:15px;font-weight:700}
+.cue-box:before{content:'YOUR ONE REMINDER';display:block;font:700 12px var(--font-body);letter-spacing:1.5px;color:var(--accent);margin-bottom:10px}
+.cue-box{font-family:var(--font-body);font-size:21px;padding:20px;line-height:1.5}
+.drill-more{border-top:1px solid var(--border);padding-top:12px}.drill-more summary{cursor:pointer;min-height:48px;padding:12px 0;font-size:17px;font-weight:700;color:var(--text)}
+.drill-extra{display:grid;gap:24px;padding-top:18px}.drill-extra .two-col{grid-template-columns:1fr;gap:24px}.drill-extra .m-section{padding-top:16px}.drill-extra .m-section p,.drill-extra .m-section li{font-size:17px;line-height:1.65}
+@media(max-width:640px){.modal-backdrop{padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))}.modal{max-height:calc(100dvh - max(8px,env(safe-area-inset-top)) - max(8px,env(safe-area-inset-bottom)));border-radius:16px}.drill-toolbar{padding:8px 12px 8px 20px}.modal-content{padding:24px 20px 32px}.modal-title{font-size:28px}.modal-content>.m-section ol li{padding:12px;gap:10px}}

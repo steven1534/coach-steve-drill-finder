@@ -194,9 +194,11 @@ function steps(text) {
   return `<p>${esc(text)}</p>`;
 }
 
+let drillReturnFocus = null;
 function openDrill(id) {
   const d = byId[id];
   if (!d) return;
+  if ($('#modalBackdrop').hidden) drillReturnFocus = document.activeElement;
   const embed = ytEmbed(d.video);
   const head = embed
     ? `<div class="modal-video"><iframe src="${embed}" title="${esc(d.name)}" allow="accelerometer; autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" loading="lazy"></iframe></div>` +
@@ -204,10 +206,8 @@ function openDrill(id) {
     : d.thumb
     ? `<div class="modal-video"><img src="${esc(d.thumb)}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`
     : '';
-  const badges =
-    `<span class="badge cat">${esc(d.category)}</span>` +
-    [d.level, d.difficulty, d.duration].filter(Boolean).map((x) => `<span class="badge lvl">${esc(x)}</span>`).join('') +
-    d.ages.map((a) => `<span class="badge lvl">${esc(a)}</span>`).join('');
+  const badges = [d.category, d.level || d.ages[0], d.duration].filter(Boolean).map(x => `<span class="badge lvl">${esc(x)}</span>`).join('');
+
 
 
   const next = d.nextDrill && byId[d.nextDrill] ? byId[d.nextDrill] : null;
@@ -223,37 +223,41 @@ function openDrill(id) {
     : '';
 
   $('#modal').innerHTML = `
-    <div class="modal-head">
-      <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
+    <div class="drill-toolbar"><span>DRILL GUIDE</span><button class="drill-close" onclick="closeModal()" aria-label="Close drill">Close <span aria-hidden="true">&times;</span></button></div><div class="drill-scroll"><div class="modal-head">
       ${head}
     </div>
     <div class="modal-content">
       <div class="modal-title-row">
         <div class="modal-badges">${badges}</div>
-        <h2 class="modal-title">${esc(d.name)}</h2>
-        ${d.purpose ? `<p class="modal-purpose">${esc(d.purpose)}</p>` : ''}
+        <h2 id="drillDialogTitle" class="modal-title">${esc(d.name)}</h2>
+        ${(d.purpose || d.description) ? `<div class="drill-goal"><h3>The goal</h3><p class="modal-purpose">${esc(d.purpose || d.description)}</p></div>` : ''}
       </div>
-      ${d.cue ? `<div class="cue-box">&ldquo;${esc(d.cue.replace(/^[“"]+|[”"]+$/g, ''))}&rdquo;</div>` : ''}
-      ${(d.fixes || d.problems.length) ? `<div class="m-section"><h3>What it fixes</h3><p>${esc(d.fixes || d.problems.join(', '))}</p></div>` : ''}
-      ${d.howTo ? `<div class="m-section"><h3>How to run it</h3>${steps(d.howTo)}</div>` : ''}
+      ${d.howTo ? `<div class="m-section"><h3>How to do it</h3>${steps(d.howTo)}</div>` : ''}
+      ${d.cue ? `<div class="cue-box" aria-label="Your one reminder">&ldquo;${esc(d.cue.replace(/^[“"]+|[”"]+$/g, ''))}&rdquo;</div>` : ''}
+      <details class="drill-more"><summary>More coaching details</summary><div class="drill-extra">
       <div class="two-col">
         ${d.feel ? `<div class="m-section"><h3>What to feel</h3><p>${esc(d.feel)}</p></div>` : ''}
-        ${d.watchFor ? `<div class="m-section"><h3>Coach: watch for</h3><p>${esc(d.watchFor)}</p></div>` : ''}
+        ${d.watchFor ? `<div class="m-section"><h3>What to look for</h3><p>${esc(d.watchFor)}</p></div>` : ''}
       </div>
       ${d.mistakes ? `<div class="m-section"><h3>Common mistakes</h3><p>${esc(d.mistakes)}</p></div>` : ''}
-      ${d.equipment.length ? `<div class="m-section"><h3>Equipment</h3><div class="equip-row">${d.equipment.map((e) => `<span class="chip">${esc(e)}</span>`).join('')}</div></div>` : ''}
+      ${(d.fixes && d.fixes !== d.purpose) ? `<div class="m-section"><h3>What this addresses</h3><p>${esc(d.fixes)}</p></div>` : ''}
+      ${d.equipment.filter(e => !/^(varies|none|n\/a)$/i.test(e.trim())).length ? `<div class="m-section"><h3>Equipment</h3><div class="equip-row">${d.equipment.filter(e => !/^(varies|none|n\/a)$/i.test(e.trim())).map((e) => `<span class="chip">${esc(e)}</span>`).join('')}</div></div>` : ''}
       ${nextHtml}
       ${d.nextStepsText ? `<div class="m-section"><h3>Progression notes</h3><p>${esc(d.nextStepsText)}</p></div>` : ''}
-    </div>`;
+      </div></details>
+    </div></div>`;
+  $('#modal').setAttribute('aria-labelledby', 'drillDialogTitle');
   $('#modalBackdrop').hidden = false;
-  $('#modal').scrollTop = 0;
+  $('#modal .drill-scroll').scrollTop = 0;
   document.body.style.overflow = 'hidden';
+  $('#modal .drill-close').focus({preventScroll:true});
 }
 
 function closeModal() {
   $('#modalBackdrop').hidden = true;
   $('#modal').innerHTML = '';
   document.body.style.overflow = '';
+  if (drillReturnFocus?.isConnected) drillReturnFocus.focus({preventScroll:true});
 }
 $('#modalBackdrop').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
@@ -558,3 +562,4 @@ if (lockBtn) lockBtn.onclick = async () => {
   $('#gate').hidden = false;
   $('#gateInput').focus();
 })();
+
