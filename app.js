@@ -42,6 +42,15 @@ function countBy(fn) {
 }
 
 function initApp(drills) {
+  const isCoach = accessContext.role === 'coach';
+  $('#buildBtn').hidden = !isCoach;
+  if (!isCoach) {
+    buildMode = false;
+    planSel = [];
+    $('#buildBar').hidden = true;
+    $('#buildPanel').hidden = true;
+    $('#buildOutput').hidden = true;
+  }
   DRILLS = drills;
   DRILLS.forEach((d) => (byId[d.id] = d));
   TYPES = [...new Set(DRILLS.map((d) => d.drillType).filter(Boolean))].sort();
@@ -340,6 +349,7 @@ function makePacks() {
 }
 
 function setBuildMode(on) {
+  if (accessContext.role !== 'coach') return;
   buildMode = on;
   if (on && sessionView) exitSession();
   $('#buildBar').hidden = !on;
@@ -350,6 +360,7 @@ function setBuildMode(on) {
 }
 
 function renderBuildBar() {
+  if (accessContext.role !== 'coach') return;
   $('#buildCount').textContent = `${planSel.length} drill${planSel.length === 1 ? '' : 's'}`;
   $('#getLinkBtn').disabled = planSel.length === 0;
   $('#textSessionBtn').disabled = planSel.length === 0;
