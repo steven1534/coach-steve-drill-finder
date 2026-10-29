@@ -53,7 +53,7 @@
   ],
   "functions": {
     "api/sync.js": {
-      "maxDuration": 10
+      "maxDuration": 60
     },
     "api/access.js": {
       "includeFiles": "data.js"
@@ -63,3 +63,4 @@
     }
   }
 }
+

@@ -3,6 +3,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 const attempts = new Map();
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
+const HOOK_TIMEOUT_MS = 45_000;
 
 function json(response, status, body) {
   response.statusCode = status;
@@ -111,11 +112,12 @@ export default async function handler(request, response) {
     });
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), HOOK_TIMEOUT_MS);
   try {
     const triggered = await fetch(hook, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
+      signal: controller.signal,
     });
     if (!triggered.ok) {
       return json(response, 502, {
@@ -124,8 +126,12 @@ export default async function handler(request, response) {
     }
   } catch {
     return json(response, 502, {
-      message: "Vercel could not start the sync. Please try again.",
+      message: controller.signal.aborted
+        ? "Vercel took too long to confirm the sync. Check the last sync time in a minute before trying again."
+        : "Vercel could not start the sync. Please try again.",
     });
+  } finally {
+    clearTimeout(timeout);
   }
 
   attempts.delete(ip);
@@ -134,3 +140,4 @@ export default async function handler(request, response) {
     message: "Sync started.",
   });
 }
+
