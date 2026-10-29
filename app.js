@@ -274,7 +274,7 @@ function resetAll() {
   window.scrollTo({ top: 0 });
 }
 
-let theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+let theme = 'dark';
 document.documentElement.dataset.theme = theme;
 $('#themeToggle').onclick = () => {
   theme = theme === 'dark' ? 'light' : 'dark';
