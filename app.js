@@ -289,10 +289,10 @@ function renderSession() {
   $('#sessionBanner').hidden = false;
   $('#sessionBanner').innerHTML = `
     <div class="sb-inner">
-      <span class="sb-label">Training session${sessionView.name ? ' for ' + esc(sessionView.name) : ''}</span>
+      <span class="sb-label">Your assignments${sessionView.name ? ' for ' + esc(sessionView.name) : ''}</span>
       <h2 class="sb-title">${drills.length} drills from Coach Steve${mins ? ' &middot; ~' + mins + ' min' : ''}</h2>
       ${sessionView.note ? `<p class="sb-note">&ldquo;${esc(sessionView.note)}&rdquo;</p>` : ''}
-      <p class="sb-hint">Work top to bottom. Tap a drill for video, setup, and cues.</p>
+      <p class="sb-hint">Work top to bottom. Tap a drill for video, setup, and cues. Keep the text message to reopen this assignment.</p>
       <button class="clear-btn" onclick="exitSession()">Browse the full library &rarr;</button>
     </div>`;
   $('#resultsGrid').innerHTML = drills.map(card).join('');
@@ -348,6 +348,9 @@ function setBuildMode(on) {
 function renderBuildBar() {
   $('#buildCount').textContent = `${planSel.length} drill${planSel.length === 1 ? '' : 's'}`;
   $('#getLinkBtn').disabled = planSel.length === 0;
+  $('#textSessionBtn').disabled = planSel.length === 0;
+  $('#sendStatus').textContent = '';
+  if (!$('#buildOutput').hidden) $('#planLink').value = planUrl();
   const list = $('#buildList');
   list.innerHTML = planSel.map((id, i) => {
     const d = byId[id];
@@ -392,6 +395,29 @@ function planUrl() {
   return location.origin + location.pathname + '#' + p.toString();
 }
 
+function sessionMessage() {
+  const name = $('#planFor').value.trim();
+  const note = $('#planNote').value.trim();
+  return `Hi${name ? ' ' + name : ''}, here's your training session from Coach Steve.${note ? '\n\n' + note : ''}\n\nOpen your assigned drills: ${planUrl()}\n\nEnter your player access code if asked. Work through the drills in order.\n\n— Coach Steve`;
+}
+
+function smsHref(phone, message, userAgent = navigator.userAgent) {
+  const raw = String(phone || '').trim();
+  // Accept formatted phone numbers; never allow a recipient to inject URI parameters.
+  if (raw && !/^\+?[0-9\s().-]+$/.test(raw)) throw new Error('Enter a phone number using digits, or leave it blank to choose in your texting app.');
+  const number = raw.replace(/[^+0-9]/g, '');
+  const count = number.replace(/\D/g, '').length;
+  if (raw && (count < 7 || count > 15)) throw new Error('Check the phone number, or leave it blank to choose in your texting app.');
+  const separator = /iPad|iPhone|iPod/.test(userAgent) ? '&' : '?';
+  return 'sms:' + number + separator + 'body=' + encodeURIComponent(message);
+}
+
+function showShareOutput() {
+  $('#buildPanel').hidden = false;
+  $('#buildOutput').hidden = false;
+  $('#planLink').value = planUrl();
+}
+
 function planText() {
   const name = $('#planFor').value.trim();
   const note = $('#planNote').value.trim();
@@ -431,6 +457,38 @@ $('#getLinkBtn').onclick = () => {
 };
 $('#copyLinkBtn').onclick = (e) => copyToClipboard(planUrl(), e.target, 'Copied!');
 $('#copyTextBtn').onclick = (e) => copyToClipboard(planText(), e.target, 'Copied!');
+
+$('#textSessionBtn').onclick = () => {
+  if (!planSel.length) return;
+  showShareOutput();
+  try {
+    const href = smsHref($('#planPhone').value, sessionMessage());
+    $('#sendStatus').textContent = 'Opening your texting app. Nothing is sent until you press Send. If no app opens, choose Copy text message below.';
+    const link = document.createElement('a');
+    link.href = href;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } catch (error) {
+    $('#sendStatus').textContent = error.message;
+    $('#planPhone').focus();
+  }
+};
+$('#copyMessageBtn').onclick = (e) => copyToClipboard(sessionMessage(), e.target, 'Message copied!');
+if (typeof navigator.share === 'function') {
+  $('#shareSessionBtn').hidden = false;
+  $('#shareSessionBtn').onclick = async () => {
+    try {
+      await navigator.share({ title: 'Coach Steve — your assigned drills', text: sessionMessage() });
+    } catch (error) {
+      if (error.name !== 'AbortError') $('#sendStatus').textContent = 'Sharing is unavailable here. Use Copy text message.';
+    }
+  };
+}
+if (location.hash.startsWith('#plan=')) {
+  $('.gate-sub').textContent = 'Your assigned drills are ready. Enter your player access code to open the session Coach Steve sent you.';
+}
+
 $('#planLink').addEventListener('focus', (e) => e.target.select());
 ['planFor', 'planNote'].forEach((id) => $('#' + id).addEventListener('input', () => {
   if (!$('#buildOutput').hidden) $('#planLink').value = planUrl();

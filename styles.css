@@ -455,3 +455,6 @@ body:has(.session-banner:not([hidden])) .stadium-hero { display:none; }
 @media(max-width:900px) { .results-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.stadium-hero h1{font-size:42px;} }
 @media(max-width:640px) { .header-inner{flex-wrap:wrap;gap:14px;padding:16px;}.header-actions{width:100%;justify-content:space-between;}.brand-text{font-size:25px;}main{padding:24px 16px 80px;}.stadium-hero{grid-template-columns:1fr;gap:24px;margin-bottom:28px;}.stadium-hero h1{font-size:40px;}.stadium-art{min-height:150px;}.results-grid{grid-template-columns:minmax(0,1fr);}.card-title{font-size:25px;}.modal-content{padding:22px;}.modal-title{font-size:29px;}.build-fields input,.build-output input{min-width:0;width:100%;flex-basis:100%;}.filter-row-2 .filter-group{min-width:0;}.next-drill{flex-wrap:wrap;}.gate-form{flex-wrap:wrap;}.gate-form input{width:100%;flex-basis:100%;}.gate-form button{width:100%;} }
 @media(prefers-reduced-motion:reduce) { html{scroll-behavior:auto;}*,*::before,*::after{transition:none!important;} }
+
+/* Session delivery controls */
+.send-hint{font-size:15px;color:var(--text-2);line-height:1.5}.send-hint:empty{display:none}#sendStatus{color:var(--accent)}.build-output button{min-height:44px}.build-fields input{min-height:46px}#textSessionBtn:disabled{opacity:.45;cursor:not-allowed}
